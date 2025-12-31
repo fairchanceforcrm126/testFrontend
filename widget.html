@@ -1,0 +1,3503 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+      integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
+      integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+      crossorigin="anonymous"
+    />
+    <script src="https://live.zwidgets.com/js-sdk/1.1/ZohoEmbededAppSDK.min.js"></script>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="mobile-chat.css"
+      media="only screen and (max-width: 768px)"
+    />
+  </head>
+  <body>
+    <div class="chat-widget">
+      <div
+        id="qrCodeContainer"
+        style="
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: #f0f2f5;
+          z-index: 9999;
+        "
+      >
+        <div
+          style="
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            flex-direction: column;
+          "
+        >
+          <div
+            id="qr"
+            style="
+              width: 400px;
+              height: 400px;
+              padding: 16px;
+              background: #ffffff;
+              border-radius: 12px;
+              border: 1px solid #d1d7db;
+              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+              position: relative;
+            "
+          >
+            <img id="qrImage" width="400" height="400" />
+            <div
+              id="qrStatus"
+              style="
+                text-align: center;
+                margin-top: 10px;
+                font-family: Arial, sans-serif;
+              "
+            >
+              Loading QR code...
+            </div>
+            <div
+              id="qrRefresh"
+              style="
+                text-align: center;
+                margin-top: 10px;
+                font-family: Arial, sans-serif;
+                color: #666;
+                font-size: 14px;
+              "
+            >
+              QR code will refresh automatically
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-container" id="messagesContainer">
+        <!-- Loading indicator -->
+        <div class="loading-container" id="loadingContainer">
+          <div class="loading-spinner">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+          </div>
+          <div class="loading-text">Loading your conversations</div>
+          <div class="loading-progress">
+            <div class="loading-progress-bar" id="loadingProgressBar"></div>
+          </div>
+          <div class="loading-status" id="loadingStatus">
+            Connecting to WhatsApp...
+          </div>
+        </div>
+
+        <!-- Floating Get Latest Messages Button -->
+        <button class="floating-latest-btn" id="floatingLatestBtn">
+          <i class="fas fa-sync-alt"></i>
+          Get Latest Messages
+        </button>
+      </div>
+      <div
+        class="reply-preview-container"
+        id="replyPreviewContainer"
+        style="display: none"
+      >
+        <div class="reply-preview-content">
+          <span class="reply-preview-text" id="replyPreviewText"></span>
+          <button class="reply-preview-close" id="replyPreviewClose">
+            &times;
+          </button>
+        </div>
+      </div>
+      <div class="input-container">
+        <button class="attachment-btn" id="attachmentBtn">
+          <i class="fas fa-paperclip"></i>
+        </button>
+        <input
+          type="file"
+          id="fileInput"
+          accept="image/*,video/*,audio/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+        />
+        <button id="recordBtn"><i class="fas fa-microphone"></i></button>
+        <button onclick="getLatestMsg()" class="refBtn">
+          <i class="fas fa-sync-alt"></i>
+        </button>
+        <input type="text" id="messageInput" placeholder="Type a message..." />
+        <button onclick="sendMessage()">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+        <div class="attachment-options" id="attachmentOptions">
+          <div class="attachment-option" data-type="document">
+            <div class="attachment-icon document-icon">
+              <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="attachment-label">Document</div>
+          </div>
+          <div class="attachment-option" data-type="image">
+            <div class="attachment-icon image-icon">
+              <i class="fas fa-image"></i>
+            </div>
+            <div class="attachment-label">Image</div>
+          </div>
+          <div class="attachment-option" data-type="audio">
+            <div class="attachment-icon audio-icon">
+              <i class="fas fa-music"></i>
+            </div>
+            <div class="attachment-label">Audio</div>
+          </div>
+          <div class="attachment-option" data-type="video">
+            <div class="attachment-icon video-icon">
+              <i class="fas fa-video"></i>
+            </div>
+            <div class="attachment-label">Video</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden elements for Zoho data -->
+    <div id="entity-id-container">
+      Module Name: <span id="moduleName"></span>
+    </div>
+    <div id="entity-id-container">Module ID: <span id="moduleId"></span></div>
+    <div id="entity-id-container">
+      Module Name: <span id="moduleName"></span>
+    </div>
+    <div id="entity-id-container">Phone Number: <span id="ph_no"></span></div>
+    <div id="entity-id-container">Record ID: <span id="record_id"></span></div>
+    <div id="entity-id-container">Record ID: <span id="session_id"></span></div>
+    <div id="entity-id-container">
+      Record ID: <span id="primary_email"></span>
+    </div>
+
+    <div id="entity-id-container">
+      Record ID: <span id="session_id_extended"></span>
+    </div>
+
+    <div id="entity-id-container">
+      Record ID: <span id="sender_number"></span>
+    </div>
+    <div id="entity-id-container">
+      Email Opt Out <span id="email_opt_out"></span>
+    </div>
+    <div id="entity-id-container">
+      Receiver Number: <span id="recevierNumber"></span>
+    </div>
+    <div id="entity-id-container">
+      Message Type: <span id="messageType"></span>
+    </div>
+    <div id="entity-id-container">
+      Message Text: <span id="messageText"></span>
+    </div>
+
+    <!-- File Preview Container -->
+    <div class="preview-container" id="previewContainer">
+      <div class="preview-content">
+        <div class="preview-header">
+          <div class="preview-title">Preview</div>
+          <button class="preview-close" id="previewClose">&times;</button>
+        </div>
+        <div id="previewBody"></div>
+        <div class="preview-buttons">
+          <button class="preview-button preview-cancel" id="previewCancel">
+            Cancel
+          </button>
+          <button class="preview-button preview-send" id="previewSend">
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Audio Recording Controls -->
+    <div class="audio-controls" id="audioControls">
+      <div class="audio-controls-header">
+        <div class="audio-controls-title">Voice Message</div>
+        <button class="audio-controls-close" id="audioControlsClose">
+          &times;
+        </button>
+      </div>
+      <div class="audio-controls-timer" id="recordingTimer">00:00</div>
+      <div class="audio-waveform">
+        <div class="audio-waveform-bars" id="waveformBars"></div>
+      </div>
+      <div class="audio-controls-buttons">
+        <button
+          class="audio-control-btn audio-record-btn"
+          id="audioRecordBtn"
+          style="display: none"
+        >
+          <i class="fas fa-microphone"></i>
+        </button>
+        <button
+          class="audio-control-btn audio-pause-btn"
+          id="audioPauseBtn"
+          style="display: none"
+        >
+          <i class="fas fa-pause"></i>
+        </button>
+        <button
+          class="audio-control-btn audio-stop-btn"
+          id="audioStopBtn"
+          style="display: none"
+        >
+          <i class="fas fa-stop"></i>
+        </button>
+        <button
+          class="audio-control-btn audio-delete-btn"
+          id="audioDeleteBtn"
+          style="display: none"
+        >
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+      <audio
+        controls
+        class="audio-preview-player"
+        id="audioPreviewPlayer"
+      ></audio>
+      <button class="audio-send-btn" id="audioSendBtn" style="display: none">
+        Send Voice Message
+      </button>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="confirmation-modal" id="confirmationModal">
+      <div class="confirmation-content">
+        <div class="confirmation-title">Delete Message</div>
+        <div class="confirmation-message">
+          Are you sure you want to delete this message? This action cannot be
+          undone.
+        </div>
+        <div class="confirmation-buttons">
+          <button class="confirmation-btn confirm-cancel" id="confirmCancel">
+            Cancel
+          </button>
+          <button class="confirmation-btn confirm-delete" id="confirmDelete">
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination Container -->
+    <div class="pagination-container" id="paginationContainer">
+      <div class="pagination-info">
+        <span id="pageInfo">Page 1 of 1</span>
+        <span id="totalCount">Total: 0 messages</span>
+      </div>
+      <div class="pagination-controls">
+        <button id="prevPageBtn" disabled>
+          <i class="fas fa-chevron-left"></i> Previous
+        </button>
+        <button id="nextPageBtn" disabled>
+          Next <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script src="https://crm.zohopublic.com/crm/v2/sdk/ZohoEmbededAppSDK.min.js"></script>
+
+    <script>
+      let apiUrl = "http://192.168.10.24:8000";
+      let currentPage = 1;
+      let totalPages = 1;
+
+      // Replace your existing socket connection code with this
+      let socket;
+
+      function initializeSocket() {
+        // First try with WebSocket
+        //  socket = io(`https://whatsapp.fairforse.com`, {
+        //       transports: ["websocket", "polling"],
+        //       withCredentials: true,
+        //       path: "/testapi/socket.io/",
+        //     });
+
+        socket = io(`http://192.168.10.24:8000`);
+
+        socket.on("connect", () => {
+          console.log("Connected with socket ID:", socket.id);
+          setupSocketListeners();
+        });
+
+        socket.on("connect_error", (error) => {
+          console.error("WebSocket connection failed:", error);
+          console.log("Attempting to connect with polling...");
+
+          // Fallback to polling
+          socket = io("http://192.168.10.24:8000", {
+            transports: ["polling"],
+            withCredentials: false,
+            path: "/socket.io/",
+            timeout: 5000,
+          });
+
+          socket.on("connect", () => {
+            console.log("Connected with polling, socket ID:", socket.id);
+            setupSocketListeners();
+          });
+
+          socket.on("connect_error", (error) => {
+            console.error("Polling connection also failed:", error);
+            // Display error to user
+            updateLoadingStatus(
+              "Failed to connect to server. Please refresh the page."
+            );
+          });
+        });
+      }
+
+      async function setupSocketListeners() {
+        console.log("Testing ///");
+
+        const getUser = await ZOHO.CRM.CONFIG.getCurrentUser();
+        const getOrgInfo = await ZOHO.CRM.CONFIG.getOrgInfo();
+        
+        const payload1 = {
+            orgId: getOrgInfo.org[0].primary_zuid,
+            userId: getUser.users[0].id,
+            email: getUser.users[0].email
+        };
+
+        console.log("Payload 1 :::::::: ", payload1);
+
+      
+        const payload = {
+          orgId: "809481313",
+          userId: "1",
+          email: "user4@demo.fairchanceforcrm.com",
+        };
+
+        console.log("Payload Data for register User: ", payload);
+        socket.emit("register-user", payload);
+
+        socket.on("whastapp-message", async (data) => {
+          console.log("Received whastapp-message event:", data);
+
+          // Check if this is a status update for an outgoing message
+          if (data.From_Me && data.status !== undefined) {
+            // This is a status update for an outgoing message
+            const currentPhoneNumber =
+              document.getElementById("ph_no").innerText;
+
+            // Extract the base phone number (remove any suffix after :)
+            const messagePhoneNumber = data.number.split(":")[0];
+
+            // Only process if this status update is for the current phone number
+            if (messagePhoneNumber === currentPhoneNumber) {
+              let statusText = "";
+
+              // Convert status number to text
+              if (data.status === 3) {
+                statusText = "delivered";
+              } else if (data.status === 4) {
+                statusText = "seen";
+              }
+
+              // Update the message status in the UI
+              if (statusText) {
+                updateMessageStatus(data.messageId, statusText);
+              }
+            }
+            return; // Don't process further for status updates
+          }
+
+          // Regular message processing continues here...
+          // Extract the base phone number (remove any suffix after :)
+          const messagePhoneNumber = data.number.split(":")[0];
+          const currentPhoneNumber = document.getElementById("ph_no").innerText;
+
+          if (messagePhoneNumber !== currentPhoneNumber) {
+            console.log("Message not for current phone number, ignoring");
+            return;
+          }
+
+          if (loadedMessageIds.has(data.messageId)) {
+            console.log("Message already displayed, ignoring:", data.messageId);
+            return;
+          }
+
+          loadedMessageIds.add(data.messageId);
+
+          if (data.type === "text") {
+            let replyToMessage = null;
+
+            // Check if this is a reply message
+            if (data.replyMessage) {
+              // For reply messages, we need to get the message being replied to
+              // This is a simplified version - you might need to adjust based on your data structure
+              replyToMessage = {
+                text: data.replyMessage.includes("files/")
+                  ? "File"
+                  : data.replyMessage,
+                fileUrl: data.replyMessage.includes("files/")
+                  ? data.replyMessage
+                  : null,
+              };
+            }
+
+            // Display the text message
+            await displayMessage({
+              messageId: data.messageId,
+              messageText: data.message,
+              messageType: data.messageType,
+              fileObj: null,
+              status: data.Status || "received",
+              createdTime: new Date().toISOString(), // Using current time since socket doesn't provide timestamp
+              replyMessage: replyToMessage,
+              insertAtTop: false, // New messages go at the bottom
+            });
+
+            // Store message in database
+            messageDatabase.set(data.messageId, {
+              messageId: data.messageId,
+              text: data.message,
+              type: data.messageType,
+              fileUrl: "",
+              fileName: "",
+              fileType: "",
+              fileData: null,
+              createdTime: new Date().toISOString(),
+              typeExtended: "text",
+            });
+          } else if (data.type === "file") {
+            const fileName = data.fileUrl.split("/").pop() || "File";
+            let fileType = "document";
+
+            if (data.fileType) {
+              if (data.fileType.includes("image")) {
+                fileType = "image";
+              } else if (data.fileType.includes("video")) {
+                fileType = "video";
+              } else if (data.fileType.includes("audio")) {
+                fileType = "audio";
+              }
+            } else {
+              if (fileName.match(/\.(jpg|jpeg|png|gif)$/i)) {
+                fileType = "image";
+              } else if (fileName.match(/\.(mp4|mov|avi)$/i)) {
+                fileType = "video";
+              } else if (fileName.match(/\.(mp3|wav|ogg|webm|opus)$/i)) {
+                fileType = "audio";
+              }
+            }
+
+            const fileObj = {
+              name: fileName,
+              url: `${apiUrl}/${data.fileUrl}`,
+              type: fileType,
+            };
+
+            let replyToMessage = null;
+            if (data.replyMessage) {
+              replyToMessage = {
+                text: data.replyMessage.includes("files/")
+                  ? "File"
+                  : data.replyMessage,
+                fileUrl: data.replyMessage.includes("files/")
+                  ? data.replyMessage
+                  : null,
+              };
+            }
+
+            await displayMessage({
+              messageId: data.messageId,
+              messageText: "File",
+              messageType: data.messageType,
+              fileObj: fileObj,
+              status: data.Status || "received",
+              createdTime: new Date().toISOString(),
+              replyMessage: replyToMessage,
+              insertAtTop: false,
+            });
+
+            messageDatabase.set(data.messageId, {
+              messageId: data.messageId,
+              text: "",
+              type: data.messageType,
+              fileUrl: fileObj.url,
+              fileName: fileObj.name,
+              fileType: fileObj.type,
+              fileData: fileObj,
+              createdTime: new Date().toISOString(),
+              typeExtended: "file",
+            });
+          }
+
+          scrollToBottom();
+        });
+      }
+      // Call this function when initializing your widget
+      initializeSocket();
+
+      function getCurrentTime() {
+        const now = new Date();
+        let hours = now.getHours();
+        const minutes = now.getMinutes();
+        const ampm = hours >= 12 ? "PM" : "AM";
+        // Convert to 12-hour format
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        // Add leading zero to minutes if needed
+        const formattedMinutes = minutes < 10 ? "0" + minutes : minutes;
+        // Combine all parts
+        const formattedTime = `${hours}:${formattedMinutes} ${ampm}`;
+        return formattedTime;
+      }
+
+      // Global variables for confirmation modal
+      let pendingDeleteRecordId = null;
+      let isLoadingChats = false;
+      let loadingProgress = 0;
+      let totalMessagesToLoad = 0;
+      let messagesLoaded = 0;
+      let allMessagesLoaded = false;
+      let lastLoadedMessageTime = null;
+      let loadedMessageIds = new Set(); // Track loaded message IDs to avoid duplicates
+      let messageDatabase = new Map(); // Store message data for replies
+      let currentlyPlayingAudio = null;
+
+      // Function to stop all audio playback
+      function stopAllAudioPlayback() {
+        // Stop all audio elements
+        const allAudioElements = document.querySelectorAll("audio");
+        allAudioElements.forEach((audio) => {
+          if (!audio.paused) {
+            audio.pause();
+            audio.currentTime = 0;
+          }
+        });
+        // Update global reference
+        currentlyPlayingAudio = null;
+      }
+
+      async function SendSeen() {
+        console.log("Send Seen function Called");
+        const phoneNumber = document.getElementById("ph_no").innerText;
+        const sessionOrgId = document.getElementById("session_id").innerText;
+        let chatId = phoneNumber;
+        let requestData = {
+          jid: chatId,
+        };
+        fetch(`${apiUrl}/client/send-seen/${sessionOrgId}`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-api-key": "FFJt3of4c5itnbmt",
+          },
+          body: JSON.stringify(requestData),
+        })
+          .then(async (response) => {
+            console.log("Send Message seen api triggered successfully: ");
+          })
+          .catch((error) => {
+            console.error("Error sending seen message:", error);
+          });
+      }
+
+      // Enhanced audio event listeners
+      function addAudioEventListeners(audioElement) {
+        audioElement.addEventListener("play", function () {
+          // Stop any currently playing audio
+          if (currentlyPlayingAudio && currentlyPlayingAudio !== this) {
+            currentlyPlayingAudio.pause();
+            currentlyPlayingAudio.currentTime = 0;
+          }
+          currentlyPlayingAudio = this;
+        });
+
+        audioElement.addEventListener("pause", function () {
+          if (currentlyPlayingAudio === this) {
+            currentlyPlayingAudio = null;
+          }
+        });
+
+        audioElement.addEventListener("ended", function () {
+          if (currentlyPlayingAudio === this) {
+            currentlyPlayingAudio = null;
+          }
+        });
+
+        // Add error handling
+        audioElement.addEventListener("error", function (e) {
+          console.error("Audio playback error:", e);
+          const errorMsg = document.createElement("div");
+          errorMsg.className = "audio-error";
+          errorMsg.textContent = "Error loading audio file";
+          audioElement.parentNode.insertBefore(
+            errorMsg,
+            audioElement.nextSibling
+          );
+        });
+      }
+
+      // Function to get tick mark class based on status
+      function getTickMarkClass(status) {
+        console.log("Getting tick mark class for status:", status);
+        switch (status.toLowerCase()) {
+          case "sent":
+          case "send":
+            return "tick-sent";
+          case "delivered":
+          case "deliver":
+            return "tick-delivered";
+          case "seen":
+          case "read":
+            return "tick-seen";
+          default:
+            console.log("Unknown status, using default:", status);
+            return "tick-sent";
+        }
+      }
+
+      // Add this new function after the getTickMarkClass function
+      function updateMessageStatus(messageId, newStatus) {
+        console.log("Updating message status:", messageId, newStatus);
+
+        const messageElement = document.querySelector(
+          `[data-message-id="${messageId}"]`
+        );
+
+        if (messageElement) {
+          const statusElement =
+            messageElement.querySelector(".message-status-ticks") ||
+            messageElement.querySelector(".message-status");
+
+          if (statusElement) {
+            const tickMarkClass = getTickMarkClass(newStatus);
+
+            if (tickMarkClass) {
+              statusElement.className = "message-status-ticks";
+              statusElement.innerHTML = `<span class="${tickMarkClass}"></span>`;
+            } else {
+              statusElement.className = "message-status";
+              statusElement.textContent = newStatus.toLowerCase();
+            }
+
+            // Update message database
+            if (messageDatabase.has(messageId)) {
+              const messageData = messageDatabase.get(messageId);
+              messageData.status = newStatus.toLowerCase();
+              messageDatabase.set(messageId, messageData);
+            }
+
+            console.log("Successfully updated message status");
+            return true;
+          }
+        }
+
+        console.log("Failed to update message status - element not found");
+        return false;
+      }
+
+      // Zoho initialization and data handling
+      function initializeWidget() {
+        ZOHO.embeddedApp.on("PageLoad", async function (data) {
+          const getUser = await ZOHO.CRM.CONFIG.getCurrentUser();
+          const getOrgInfo = await ZOHO.CRM.CONFIG.getOrgInfo();
+          console.log("Get Org Info ::: ", getOrgInfo);
+          console.log("Get getUser Info ::: ", getUser);
+
+          let userId = getUser.users[0].id;
+          let orgId = getOrgInfo.org[0].primary_zuid;
+          let email = getUser.users[0].email;
+
+          console.log("UserId: ", userId);
+          console.log("OrgId: ", orgId);
+
+          const sessionOrgId = "1";
+
+          document.getElementById("session_id").innerText = sessionOrgId;
+          document.getElementById("primary_email").innerText = email;
+
+          console.log("Checking Session Status");
+          updateLoadingStatus("Checking session status...");
+
+          let urlForStatus = `${apiUrl}/session/status/${sessionOrgId}`;
+          console.log("URL FOR STATUS CHECK ::: ", urlForStatus);
+
+          const checkStatus = await fetch(urlForStatus, {
+            headers: {
+              "x-api-key": "FFJt3of4c5itnbmt",
+            },
+          });
+          const checkStatusData = await checkStatus.json();
+          console.log("checkStatusData: ", checkStatusData.message);
+
+          // checkStatusData.message = "session_not_connected"; // TEMPORARY FORCE NOT CONNECTED FOR TESTING
+          if (checkStatusData.message != "session_connected") {
+            // console.log("session_not_connected");
+            updateLoadingStatus(
+              "Session not connected. Please connect First ..."
+            );
+
+            // Keep the loading indicator visible with the warning message
+            const loadingContainer =
+              document.getElementById("loadingContainer");
+            const loadingProgressBar =
+              document.getElementById("loadingProgressBar");
+            const loadingText = document.querySelector(".loading-text");
+
+            // Update the loading text to show the warning
+            if (loadingText) {
+              loadingText.textContent = "Your sessionId is not connected";
+              loadingText.style.color = "#ff6b6b"; // Make it red to indicate warning
+            }
+
+            // Hide the progress bar
+            if (loadingProgressBar) {
+              loadingProgressBar.style.display = "none";
+            }
+
+            // Stop all progress by returning early
+            return;
+          }
+          console.log("Session Connected");
+
+          console.log("PageLoad Data:", data);
+
+          // Show loading indicator
+          showLoadingIndicator("Connecting to WhatsApp...");
+
+          if (data && data.Entity && data.EntityId) {
+            var module_name = data.Entity;
+            var module_id = data.EntityId;
+
+            updateLoadingStatus("Fetching contact details...");
+            ZOHO.CRM.API.getRecord({
+              Entity: module_name,
+              RecordID: module_id,
+            })
+              .then(function (response) {
+                console.log("Lead Record Response:", response);
+                if (response && response.data && response.data.length > 0) {
+                  let emailOptOut = response.data[0].Email_Opt_Out;
+                  var phone_number =
+                    response.data[0].Phone || "Mobile not found";
+                    
+                  var lead_name = response.data[0].Name || "Name not found";
+                  document.getElementById("ph_no").innerText = phone_number;
+                  document.getElementById("recevierNumber").innerText =
+                    phone_number;
+                  document.getElementById("email_opt_out").innerText =
+                    emailOptOut || "Email Opt Out not found";
+                  document.getElementById("session_id_extended").innerText =
+                    orgId;
+
+                  updateLoadingStatus("Fetching WhatsApp messages...");
+                  loadMessages();
+                } else {
+                  document.getElementById("ph_no").innerText =
+                    "Mobile not available";
+                  hideLoadingIndicator();
+                }
+              })
+              .catch(function (error) {
+                console.error("Error fetching contact details:", error);
+                document.getElementById("ph_no").innerText =
+                  "Error fetching Mobile";
+                updateLoadingStatus(
+                  "Error fetching contact details. Please Check Your Phone field."
+                );
+                setTimeout(hideLoadingIndicator, 2000);
+              });
+          }
+        });
+        ZOHO.embeddedApp.init();
+        initializeRecording();
+        initializeAttachmentOptions();
+        initializePreview();
+        initializeAudioControls();
+        initializeConfirmationModal();
+        initializeGetLatestMessages();
+        initializeReplyPreview();
+        initializeSocket();
+      }
+
+      function initializeReplyPreview() {
+        const replyPreviewContainer = document.getElementById(
+          "replyPreviewContainer"
+        );
+        const replyPreviewClose = document.getElementById("replyPreviewClose");
+        replyPreviewClose.addEventListener("click", function () {
+          replyPreviewContainer.style.display = "none";
+          delete replyPreviewContainer.dataset.replyToMessageId;
+          delete replyPreviewContainer.dataset.replyToContent;
+          delete replyPreviewContainer.dataset.replyToFile;
+        });
+      }
+
+      function initializeGetLatestMessages() {
+        const getLatestBtn = document.getElementById("getLatestBtn");
+        const floatingLatestBtn = document.getElementById("floatingLatestBtn");
+        floatingLatestBtn.addEventListener("click", function () {
+          loadLatestMessages();
+        });
+      }
+
+      async function loadMessages(page = 1) {
+        // console.log("Load Messages function triggered!!!");
+
+        const phone_number = document.getElementById("ph_no").innerText;
+        const session_id = document.getElementById("session_id").innerText;
+
+        // console.log("Phone Number Log from loadMessages: ", phone_number);
+        // console.log("session_id  Log from loadMessages: ", session_id);
+
+        currentPage = page;
+
+        // Show loading indicator
+        showLoadingIndicator("Fetching messages from server...");
+
+        try {
+          const response = await fetch(
+            `${apiUrl}/whatsapp-message/messages?sessionId=${session_id}&number=${phone_number}&page=${page}&perPage=20`,
+            {
+              method: "GET",
+              headers: {
+                "content-type": "application/json",
+                "x-api-key": "FFJt3of4c5itnbmt",
+              },
+            }
+          );
+
+          const data = await response.json();
+          // console.log("Messages from server:", data);
+
+          if (data && data.data && data.data.length > 0) {
+            // Filter messages for the current phone number
+            const msgArr = data.data.filter(
+              (msg) => msg.number === phone_number
+            );
+
+            if (msgArr.length > 0) {
+              // Sort by descending order (latest first)
+              msgArr.sort((a, b) => {
+                return new Date(a.createdAt) - new Date(b.createdAt);
+              });
+
+              // console.log("Sorted message array ::: ", msgArr);
+
+              totalMessagesToLoad = msgArr.length;
+              updateLoadingProgress(0);
+              updateLoadingStatus(
+                `Loading messages (0/${totalMessagesToLoad})...`
+              );
+
+              if (msgArr.length > 0) {
+                lastLoadedMessageTime = new Date(msgArr[0].createdAt);
+              }
+
+              totalPages = data.pagination.totalPages;
+              updatePaginationInfo(data.pagination);
+
+              // Clear existing messages if loading first page
+              if (page === 1) {
+                const messagesContainer =
+                  document.getElementById("messagesContainer");
+                const elementsToRemove = messagesContainer.querySelectorAll(
+                  ".message, .date-separator"
+                );
+                elementsToRemove.forEach((element) => element.remove());
+              }
+
+              // Display messages
+              await handleDisplay(msgArr, page > 1);
+            } else {
+              console.log("No messages found for this phone number.");
+              hideLoadingIndicator();
+              allMessagesLoaded = true;
+              updatePaginationInfo(data.pagination);
+            }
+          } else {
+            console.log("No messages found.");
+            hideLoadingIndicator();
+            allMessagesLoaded = true;
+          }
+        } catch (error) {
+          console.error("Error fetching messages from server:", error);
+          updateLoadingStatus("Error loading messages. Please try again.");
+          setTimeout(hideLoadingIndicator, 2000);
+        }
+
+        SendSeen();
+      }
+
+      // function getLatestMsg(e) {
+      //   updateLoadingStatus("Getting Latest Messages...");
+      //   // loadLatestMessages();
+      //   e.preventDefault();
+      // }
+
+      function getLatestMsg() {
+        updateLoadingStatus("Page Refreshing...");
+        // loadLatestMessages();
+        // e.preventDefault();
+        location.reload();
+      }
+
+      // FIXED: Improved Load latest messages function
+      async function loadLatestMessages() {
+        const phone_number = document.getElementById("ph_no").innerText;
+        const session_id = document.getElementById("session_id").innerText;
+
+        // Show loading indicator
+        showLoadingIndicator("Fetching latest messages...");
+        hideGetLatestButton();
+
+        try {
+          // Add a small delay to allow database sync for recently sent messages
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
+          // Only fetch messages that are newer than our last loaded message time
+          let url = `${apiUrl}/whatsapp-message/messages?sessionId=${session_id}&number=${phone_number}&page=1&perPage=20`;
+
+          // If we have a last loaded message time, add it as a filter
+          if (lastLoadedMessageTime) {
+            // Subtract 1 second to ensure we get messages sent in the last second
+            const timeWithBuffer = new Date(
+              lastLoadedMessageTime.getTime() - 1000
+            ).toISOString();
+            url += `&after=${timeWithBuffer}`;
+          }
+
+          const response = await fetch(url, {
+            method: "GET",
+            headers: {
+              "content-type": "application/json",
+              "x-api-key": "FFJt3of4c5itnbmt",
+            },
+          });
+
+          const data = await response.json();
+          console.log("Latest Messages Response:", data);
+
+          if (data && data.data && data.data.length > 0) {
+            // Filter messages for the current phone number
+            const allMessages = data.data.filter(
+              (msg) => msg.number === phone_number
+            );
+
+            // Filter out messages that are already loaded using the loadedMessageIds set
+            const newMsgArr = allMessages.filter(
+              (record) => !loadedMessageIds.has(record.messageId)
+            );
+
+            if (newMsgArr.length > 0) {
+              // Sort by descending order (latest first)
+              newMsgArr.sort((a, b) => {
+                return new Date(b.createdAt) - new Date(a.createdAt);
+              });
+
+              console.log("New Messages Found (Latest First):", newMsgArr);
+
+              // Add new message IDs to the loaded set
+              newMsgArr.forEach((record) => {
+                loadedMessageIds.add(record.messageId);
+              });
+
+              // Update the last loaded message time
+              if (newMsgArr.length > 0) {
+                lastLoadedMessageTime = new Date(newMsgArr[0].createdAt);
+              }
+
+              // Set total messages to load for progress tracking
+              totalMessagesToLoad = newMsgArr.length;
+              messagesLoaded = 0;
+              updateLoadingProgress(0);
+              updateLoadingStatus(
+                `Loading new messages (0/${totalMessagesToLoad})...`
+              );
+
+              // Update pagination info
+              totalPages = data.pagination.totalPages;
+              updatePaginationInfo(data.pagination);
+
+              // Process and display new messages
+              await handleDisplayNewMessages(newMsgArr);
+            } else {
+              console.log("No new messages found.");
+              hideLoadingIndicator();
+              // Show a brief notification that no new messages were found
+              const floatingBtn = document.getElementById("floatingLatestBtn");
+              const originalText = floatingBtn.innerHTML;
+              floatingBtn.innerHTML =
+                '<i class="fas fa-check"></i> No new messages';
+              floatingBtn.style.backgroundColor = "#4caf50";
+              setTimeout(() => {
+                floatingBtn.innerHTML = originalText;
+                floatingBtn.style.backgroundColor = "#128c7e";
+              }, 2000);
+            }
+          } else {
+            console.log("No messages found.");
+            hideLoadingIndicator();
+            // Show a brief notification that no new messages were found
+            const floatingBtn = document.getElementById("floatingLatestBtn");
+            const originalText = floatingBtn.innerHTML;
+            floatingBtn.innerHTML =
+              '<i class="fas fa-check"></i> No new messages';
+            floatingBtn.style.backgroundColor = "#4caf50";
+            setTimeout(() => {
+              floatingBtn.innerHTML = originalText;
+              floatingBtn.style.backgroundColor = "#128c7e";
+            }, 2000);
+          }
+        } catch (error) {
+          console.error("Error fetching latest messages:", error);
+          updateLoadingStatus(
+            "Error loading latest messages. Please try again."
+          );
+          setTimeout(() => {
+            hideLoadingIndicator();
+          }, 2000);
+        }
+      }
+
+      // FIXED: Handle display new messages function
+      async function handleDisplayNewMessages(msgArr) {
+        for (const [index, record] of msgArr.entries()) {
+          const messageType = record.messageType;
+          const messageText = record.message;
+          const createdTime = record.createdAt;
+          const fileId = record.type === "file" ? record.messageId : null;
+          const messageId = record.messageId;
+          const replyMessage = record.replyMessage || null;
+          const isReply = replyMessage ? true : false;
+          const status = record.status || "received";
+
+          console.log("isReply: ", isReply);
+
+          // Get the message being replied to if this is a reply
+          let replyToMessage = null;
+          if (isReply && replyMessage) {
+            console.log("Calling reply Message function");
+            replyToMessage = await getReplyMessageData(replyMessage);
+          }
+
+          // Handle file messages
+          if (record.type === "file" && record.fileUrl) {
+            console.log("Checking file message");
+
+            // For file messages, we need to fetch the file
+            const fileUrl = record.fileUrl;
+            const fileName = fileUrl.split("/").pop() || "File"; // Changed from split("\\") to split("/")
+            // FIXED: Added .webm to audio file detection
+            const fileType =
+              fileName.includes(".opus") || fileName.includes(".webm")
+                ? "audio"
+                : fileName.includes(".jpg") || fileName.includes(".png")
+                ? "image"
+                : fileName.includes(".mp4")
+                ? "video"
+                : "document";
+
+            const fileObj = {
+              name: fileName,
+              url: `${apiUrl}/files/${fileUrl.split("/").pop()}`, // Adjust this endpoint as needed
+              type: fileType,
+            };
+
+            await displayMessage({
+              messageId: messageId,
+              messageText: messageText || "File",
+              messageType: messageType, // This is the fix - ensure messageType is defined
+              fileObj: fileObj,
+              status: status,
+              createdTime: createdTime,
+              replyMessage: replyToMessage,
+              insertAtTop: false, // insertAtTop = false for new messages (add at bottom)
+            });
+          } else {
+            // Text messages
+            console.log("Message Type: ", messageType);
+            console.log("messageText: ", messageText);
+            console.log("messageId : ", messageId);
+            console.log("status : ", status);
+
+            await displayMessage({
+              messageId: messageId,
+              messageText: messageText,
+              messageType: messageType, // This is the fix - ensure messageType is defined
+              fileObj: null,
+              status: status,
+              createdTime: createdTime,
+              replyMessage: replyToMessage,
+              insertAtTop: false, // insertAtTop = false for new messages (add at bottom)
+            });
+          }
+
+          messagesLoaded++;
+          const progress = (messagesLoaded / totalMessagesToLoad) * 100;
+          updateLoadingProgress(progress);
+          updateLoadingStatus(
+            `Loading new messages (${messagesLoaded}/${totalMessagesToLoad})...`
+          );
+
+          if (messagesLoaded >= totalMessagesToLoad) {
+            hideLoadingIndicator();
+            scrollToBottom();
+          }
+        }
+      }
+
+      // ADDED: Helper function to scroll to bottom
+      function scrollToBottom() {
+        const messagesContainer = document.getElementById("messagesContainer");
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+
+      // ADDED: Function to update pagination information
+      function updatePaginationInfo(pagination) {
+        // Update pagination info
+        document.getElementById(
+          "pageInfo"
+        ).textContent = `Page ${pagination.currentPage} of ${pagination.totalPages}`;
+        document.getElementById(
+          "totalCount"
+        ).textContent = `Total: ${pagination.totalCount} messages`;
+
+        // Update pagination buttons
+        const prevBtn = document.getElementById("prevPageBtn");
+        const nextBtn = document.getElementById("nextPageBtn");
+
+        prevBtn.disabled = pagination.currentPage <= 1;
+        nextBtn.disabled = pagination.currentPage >= pagination.totalPages;
+      }
+
+      // Show/Hide Get Latest Messages Button
+      function showGetLatestButton() {
+        if (allMessagesLoaded) {
+          document.getElementById("floatingLatestBtn").classList.add("show");
+        }
+      }
+
+      function hideGetLatestButton() {
+        document.getElementById("floatingLatestBtn").classList.remove("show");
+      }
+
+      // Loading indicator functions
+      function showLoadingIndicator(statusText) {
+        isLoadingChats = true;
+        const loadingContainer = document.getElementById("loadingContainer");
+        loadingContainer.classList.remove("hidden");
+        loadingContainer.classList.remove("partial");
+        loadingContainer.classList.remove("floating");
+        if (statusText) {
+          updateLoadingStatus(statusText);
+        }
+        // Reset progress
+        updateLoadingProgress(0);
+      }
+
+      function hideLoadingIndicator() {
+        isLoadingChats = false;
+        const loadingContainer = document.getElementById("loadingContainer");
+        loadingContainer.classList.add("hidden");
+      }
+
+      function switchToPartialLoadingMode() {
+        const loadingContainer = document.getElementById("loadingContainer");
+        loadingContainer.classList.add("floating");
+        updateLoadingStatus("Loading more messages...");
+      }
+
+      function updateLoadingProgress(percent) {
+        loadingProgress = percent;
+        const progressBar = document.getElementById("loadingProgressBar");
+        progressBar.style.width = `${percent}%`;
+      }
+
+      function updateLoadingStatus(statusText) {
+        const loadingStatus = document.getElementById("loadingStatus");
+        loadingStatus.textContent = statusText;
+      }
+
+      // Initialize confirmation modal
+      function initializeConfirmationModal() {
+        const confirmationModal = document.getElementById("confirmationModal");
+        const confirmCancel = document.getElementById("confirmCancel");
+        const confirmDelete = document.getElementById("confirmDelete");
+
+        confirmCancel.addEventListener("click", function () {
+          hideConfirmationModal();
+        });
+
+        confirmDelete.addEventListener("click", function () {
+          if (pendingDeleteRecordId) {
+            executeDelete(pendingDeleteRecordId);
+            hideConfirmationModal();
+          }
+        });
+
+        // Close modal when clicking outside
+        confirmationModal.addEventListener("click", function (e) {
+          if (e.target === confirmationModal) {
+            hideConfirmationModal();
+          }
+        });
+      }
+
+      function showConfirmationModal(recordId) {
+        pendingDeleteRecordId = recordId;
+        document.getElementById("confirmationModal").style.display = "flex";
+      }
+
+      function hideConfirmationModal() {
+        document.getElementById("confirmationModal").style.display = "none";
+        pendingDeleteRecordId = null;
+      }
+
+      async function executeDelete(messageId) {
+        console.log("Executing delete for message ID:", messageId);
+        try {
+          // Since we're using local server, we need to implement delete functionality
+          // This is a placeholder - you'll need to implement the actual delete API call
+          const phoneNumber = document.getElementById("ph_no").innerText;
+          const sessionOrgId = document.getElementById("session_id").innerText;
+          const messageElement = document.querySelector(
+            `[data-message-id="${messageId}"]` // Using messageId attribute
+          );
+
+          let messageGet = messageDatabase.get(messageId);
+
+          console.log("Message Get ::: ", messageGet);
+
+          let messagekey = {
+            id: messageId,
+            remoteJid: phoneNumber + "@s.whatsapp.net",
+          };
+
+          if (messageGet.type == "Outgoing") {
+            messagekey.fromMe = true;
+          } else {
+            messagekey.fromMe = false;
+          }
+
+          let data = { messageKey: messagekey };
+
+          console.log("Data ::: ", data);
+
+          const response = await fetch(
+            `${apiUrl}/message/delete/${sessionOrgId}`,
+            {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                "x-api-key": "FFJt3of4c5itnbmt",
+              },
+              body: JSON.stringify(data),
+            }
+          );
+
+          if (response.ok) {
+            console.log("Record Deleted Successfully");
+            const res = await fetch(
+              `${apiUrl}/whatsapp-message/deleteMessage`,
+              {
+                method: "POST",
+                headers: {
+                  "content-type": "application/json",
+                  "x-api-key": "FFJt3of4c5itnbmt",
+                },
+                body: JSON.stringify({ messageId: messageId }),
+              }
+            );
+
+            const resData = await res.json();
+
+            console.log("Res Data ::: ", resData);
+
+            if (messageGet.extendedType == "file") {
+              const res = await fetch(`${apiUrl}`);
+            }
+
+            // Remove the message from UI and from loaded IDs set
+            const messageElement = document.querySelector(
+              `[data-message-id="${messageId}"]` // Using messageId attribute
+            );
+            if (messageElement) {
+              messageElement.remove();
+            }
+            loadedMessageIds.delete(messageId); // Using messageId
+            messageDatabase.delete(messageId); // Also remove from database
+          } else {
+            console.error("Failed to delete message");
+          }
+        } catch (error) {
+          console.log("Error while deleting the message:", error);
+        }
+      }
+
+      // Preview functionality
+
+      let currentPreviewFile = null;
+
+      function initializePreview() {
+        const previewContainer = document.getElementById("previewContainer");
+        const previewClose = document.getElementById("previewClose");
+        const previewCancel = document.getElementById("previewCancel");
+        const previewSend = document.getElementById("previewSend");
+
+        previewClose.addEventListener("click", closePreview);
+        previewCancel.addEventListener("click", closePreview);
+        previewSend.addEventListener("click", sendPreviewedFile);
+      }
+
+      function closePreview() {
+        document.getElementById("previewContainer").style.display = "none";
+        currentPreviewFile = null;
+      }
+
+      function showFilePreview(file) {
+        const previewContainer = document.getElementById("previewContainer");
+        const previewBody = document.getElementById("previewBody");
+        previewBody.innerHTML = "";
+        currentPreviewFile = file;
+
+        const fileType = file.type.split("/")[0];
+
+        if (fileType === "image") {
+          const img = document.createElement("img");
+          img.src = URL.createObjectURL(file);
+          img.className = "preview-image";
+          img.alt = file.name;
+          previewBody.appendChild(img);
+
+          const details = document.createElement("div");
+          details.className = "file-message";
+          details.innerHTML = `
+                  <div class="file-icon image-icon"><i class="fas fa-image"></i></div>
+                  <div class="file-details">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">Size ${formatFileSize(
+                      file.size
+                    )}</div>
+                  </div>
+                `;
+          previewBody.appendChild(details);
+        } else if (fileType === "video") {
+          const video = document.createElement("video");
+          video.src = URL.createObjectURL(file);
+          video.className = "preview-video";
+          video.controls = true;
+          previewBody.appendChild(video);
+
+          const details = document.createElement("div");
+          details.className = "file-message";
+          details.innerHTML = `
+                  <div class="file-icon video-icon"><i class="fas fa-video"></i></div>
+                  <div class="file-details">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${formatFileSize(file.size)}</div>
+                  </div>
+                `;
+          previewBody.appendChild(details);
+        } else if (fileType === "audio") {
+          const audioContainer = document.createElement("div");
+          audioContainer.className = "preview-audio-container";
+
+          const audio = document.createElement("audio");
+          audio.src = URL.createObjectURL(file);
+          audio.className = "preview-audio";
+          audio.controls = true;
+          audioContainer.appendChild(audio);
+          previewBody.appendChild(audioContainer);
+
+          const details = document.createElement("div");
+          details.className = "file-message";
+          details.innerHTML = `
+                  <div class="file-icon audio-icon"><i class="fas fa-music"></i></div>
+                  <div class="file-details">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${formatFileSize(file.size)}</div>
+                  </div>
+                `;
+          previewBody.appendChild(details);
+        } else {
+          const fileExtension = file.name.split(".").pop().toLowerCase();
+          let iconClass = "fa-file-alt";
+          let previewContent = "";
+
+          if (["pdf"].includes(fileExtension)) {
+            iconClass = "fa-file-pdf";
+            previewContent = `
+                    <div class="preview-document-container" style="width: 100%; height: 400px; margin-bottom: 15px; border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
+                      <iframe src="${URL.createObjectURL(
+                        file
+                      )}" width="100%" height="100%" style="border: none;"></iframe>
+                    </div>`;
+          } else if (["doc", "docx"].includes(fileExtension)) {
+            iconClass = "fa-file-word";
+          } else if (["xls", "xlsx"].includes(fileExtension)) {
+            iconClass = "fa-file-excel";
+          } else if (["ppt", "pptx"].includes(fileExtension)) {
+            iconClass = "fa-file-powerpoint";
+          } else if (["txt"].includes(fileExtension)) {
+            iconClass = "fa-file-alt";
+            previewContent = `<div class="text-preview-container" style="width: 100%; max-height: 300px; overflow: auto; background: #f5f5f5; padding: 15px; border-radius: 8px; font-family: monospace; margin-bottom: 15px;"></div>`;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+              document.querySelector(".text-preview-container").textContent =
+                e.target.result;
+            };
+            reader.readAsText(file);
+          }
+
+          const details = document.createElement("div");
+          details.className = "file-message";
+          details.style.marginBottom = "0";
+          details.innerHTML = `
+                  <div class="file-icon document-icon"><i class="fas ${iconClass}"></i></div>
+                  <div class="file-details">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${formatFileSize(file.size)}</div>
+                  </div>
+                `;
+          previewBody.appendChild(details);
+
+          if (previewContent) {
+            const previewElement = document.createElement("div");
+            previewElement.innerHTML = previewContent;
+            previewBody.appendChild(previewElement);
+          }
+        }
+
+        previewContainer.style.display = "flex";
+      }
+
+      async function sendPreviewedFile() {
+        if (currentPreviewFile) {
+          await handleFileUploadAndSend(currentPreviewFile);
+          closePreview();
+        }
+      }
+
+      // Enhanced audio recording controls
+      let mediaRecorder;
+      let audioChunks = [];
+      let isRecording = false;
+      let isPaused = false;
+      let stream;
+      let recordingTimer;
+      let recordingDuration = 0;
+      let recordedAudioBlob = null;
+
+      function initializeAudioControls() {
+        const audioControls = document.getElementById("audioControls");
+        const audioControlsClose =
+          document.getElementById("audioControlsClose");
+        const audioRecordBtn = document.getElementById("audioRecordBtn");
+        const audioPauseBtn = document.getElementById("audioPauseBtn");
+        const audioStopBtn = document.getElementById("audioStopBtn");
+        const audioDeleteBtn = document.getElementById("audioDeleteBtn");
+        const audioSendBtn = document.getElementById("audioSendBtn");
+        const waveformBars = document.getElementById("waveformBars");
+
+        for (let i = 0; i < 30; i++) {
+          const bar = document.createElement("div");
+          bar.className = "waveform-bar";
+          bar.style.height = `${Math.random() * 60 + 10}%`;
+          bar.style.animationDelay = `${Math.random() * 1}s`;
+          waveformBars.appendChild(bar);
+        }
+
+        audioControlsClose.addEventListener("click", closeAudioControls);
+        audioRecordBtn.addEventListener("click", toggleAudioRecording);
+        audioPauseBtn.addEventListener("click", pauseAudioRecording);
+        audioStopBtn.addEventListener("click", stopAudioRecording);
+        audioDeleteBtn.addEventListener("click", deleteAudioRecording);
+        audioSendBtn.addEventListener("click", sendAudioRecording);
+      }
+
+      function showAudioControls() {
+        document.getElementById("audioControls").style.display = "block";
+        document.getElementById("audioRecordBtn").style.display = "none";
+        document.getElementById("audioPauseBtn").style.display = "flex";
+        document.getElementById("audioStopBtn").style.display = "flex";
+        document.getElementById("audioDeleteBtn").style.display = "none";
+        document.getElementById("audioSendBtn").style.display = "none";
+        document.getElementById("audioPreviewPlayer").style.display = "none";
+
+        recordingDuration = 0;
+        updateRecordingTimerDisplay();
+
+        const waveformBars = document.querySelectorAll(".waveform-bar");
+        waveformBars.forEach((bar) => {
+          bar.style.animationPlayState = "running";
+          bar.style.height = "30%";
+        });
+      }
+
+      function closeAudioControls() {
+        document.getElementById("audioControls").style.display = "none";
+        if (isRecording) {
+          stopAudioRecording();
+        }
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+      }
+
+      async function toggleAudioRecording() {
+        if (!isRecording) {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+              audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = () => {
+              // FIXED: Use audio/webm for better compatibility
+              const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+              recordedAudioBlob = audioBlob;
+              const audioURL = URL.createObjectURL(audioBlob);
+              const audioPlayer = document.getElementById("audioPreviewPlayer");
+              audioPlayer.src = audioURL;
+              audioPlayer.style.display = "block";
+              document.getElementById("audioSendBtn").style.display = "block";
+
+              const waveformBars = document.querySelectorAll(".waveform-bar");
+              waveformBars.forEach((bar) => {
+                bar.style.animationPlayState = "paused";
+              });
+            };
+
+            mediaRecorder.start(200);
+            isRecording = true;
+            isPaused = false;
+            startRecordingTimer();
+
+            const waveformBars = document.querySelectorAll(".waveform-bar");
+            waveformBars.forEach((bar) => {
+              bar.style.animationPlayState = "running";
+            });
+
+            document.getElementById("audioPauseBtn").style.display = "flex";
+            document.getElementById("audioStopBtn").style.display = "flex";
+            document.getElementById("audioRecordBtn").style.display = "none";
+            document.getElementById("audioDeleteBtn").style.display = "none";
+            document.getElementById("audioSendBtn").style.display = "none";
+          } catch (error) {
+            console.error("Error starting recording:", error);
+          }
+        }
+      }
+
+      function pauseAudioRecording() {
+        if (isRecording && !isPaused) {
+          mediaRecorder.pause();
+          isPaused = true;
+          clearInterval(recordingTimer);
+
+          // Remove the OGG type specification
+          const tempAudioBlob = new Blob(audioChunks);
+          const audioURL = URL.createObjectURL(tempAudioBlob);
+          const audioPlayer = document.getElementById("audioPreviewPlayer");
+          audioPlayer.src = audioURL;
+          audioPlayer.style.display = "block";
+
+          const waveformBars = document.querySelectorAll(".waveform-bar");
+          waveformBars.forEach((bar) => {
+            bar.style.animationPlayState = "paused";
+          });
+
+          document.getElementById("audioPauseBtn").innerHTML =
+            '<i class="fas fa-play"></i>';
+        } else if (isRecording && isPaused) {
+          mediaRecorder.resume();
+          isPaused = false;
+          startRecordingTimer();
+
+          document.getElementById("audioPreviewPlayer").style.display = "none";
+
+          const waveformBars = document.querySelectorAll(".waveform-bar");
+          waveformBars.forEach((bar) => {
+            bar.style.animationPlayState = "running";
+          });
+
+          document.getElementById("audioPauseBtn").innerHTML =
+            '<i class="fas fa-pause"></i>';
+        }
+      }
+
+      function stopAudioRecording() {
+        if (isRecording) {
+          mediaRecorder.stop();
+          isRecording = false;
+          isPaused = false;
+          clearInterval(recordingTimer);
+
+          document.getElementById("audioPauseBtn").style.display = "none";
+          document.getElementById("audioStopBtn").style.display = "none";
+          document.getElementById("audioDeleteBtn").style.display = "flex";
+          document.getElementById("audioSendBtn").style.display = "block";
+        }
+      }
+
+      function deleteAudioRecording() {
+        if (isRecording) {
+          stopAudioRecording();
+        }
+        recordedAudioBlob = null;
+        audioChunks = [];
+        recordingDuration = 0;
+        updateRecordingTimerDisplay();
+
+        document.getElementById("audioRecordBtn").style.display = "flex";
+        document.getElementById("audioPauseBtn").style.display = "none";
+        document.getElementById("audioStopBtn").style.display = "none";
+        document.getElementById("audioDeleteBtn").style.display = "none";
+        document.getElementById("audioSendBtn").style.display = "none";
+        document.getElementById("audioPreviewPlayer").style.display = "none";
+        document.getElementById("audioPreviewPlayer").src = "";
+
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+          stream = null;
+        }
+      }
+
+      // async function sendAudioRecording() {
+      //   if (recordedAudioBlob) {
+      //     // Use the recorded blob directly without specifying OGG format
+      //     const audioFile = new File(
+      //       [recordedAudioBlob],
+      //       `voice-message-${Date.now()}.wav`, // You can use .wav or just keep it generic
+      //       { type: recordedAudioBlob.type } // Use the actual recorded type
+      //     );
+
+      //     console.log("Audio File ready to Upload: ", audioFile);
+      //     await handleFileUploadAndSend(audioFile);
+      //     closeAudioControls();
+      //   }
+      // }
+
+      function startRecordingTimer() {
+        recordingTimer = setInterval(() => {
+          recordingDuration++;
+          updateRecordingTimerDisplay();
+        }, 1000);
+      }
+
+      function updateRecordingTimerDisplay() {
+        const minutes = Math.floor(recordingDuration / 60);
+        const seconds = recordingDuration % 60;
+        document.getElementById("recordingTimer").textContent = `${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+      }
+
+      // Modified recording functionality
+      async function initializeRecording() {
+        const recordBtn = document.getElementById("recordBtn");
+        recordBtn.disabled = true;
+
+        try {
+          const tempStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          });
+          tempStream.getTracks().forEach((track) => track.stop());
+          recordBtn.disabled = false;
+
+          recordBtn.addEventListener("click", function () {
+            showAudioControls();
+            toggleAudioRecording();
+          });
+        } catch (error) {
+          console.error("Error accessing microphone:", error);
+          recordBtn.disabled = true;
+          recordBtn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+        }
+      }
+
+      function initializeMessageOptions() {
+        document.addEventListener("click", function (e) {
+          // Close all open menus when clicking outside
+          const openMenus = document.querySelectorAll(
+            ".message-options-menu.show"
+          );
+          openMenus.forEach((menu) => {
+            if (!menu.closest(".message-options").contains(e.target)) {
+              menu.classList.remove("show");
+            }
+          });
+        });
+      }
+
+      // Enhanced event listener for message options
+      // Enhanced event listener for message options
+      function addMessageOptionsListeners(
+        messageContainer,
+        messageId,
+        messageType
+      ) {
+        const optionsButton =
+          messageContainer.querySelector(".message-options");
+        const optionsMenu = messageContainer.querySelector(
+          ".message-options-menu"
+        );
+        const replyOption = messageContainer.querySelector(".reply-option");
+        const deleteOption = messageContainer.querySelector(".delete-option");
+
+        // Toggle menu with smooth animation
+        optionsButton.addEventListener("click", function (e) {
+          e.stopPropagation();
+          // Close other open menus
+          document
+            .querySelectorAll(".message-options-menu.show")
+            .forEach((menu) => {
+              if (menu !== optionsMenu) {
+                menu.classList.remove("show");
+              }
+            });
+
+          // Toggle current menu
+          optionsMenu.classList.toggle("show");
+        });
+
+        // Reply functionality
+        if (replyOption) {
+          replyOption.addEventListener("click", function (e) {
+            e.stopPropagation();
+            optionsMenu.classList.remove("show");
+            handleReply(messageId);
+          });
+        }
+
+        // Delete functionality (only for outgoing messages)
+        if (deleteOption) {
+          deleteOption.addEventListener("click", function (e) {
+            e.stopPropagation();
+            optionsMenu.classList.remove("show");
+            showConfirmationModal(messageId); // Using messageId instead of recordId
+          });
+        }
+
+        // Add audio event listeners for any audio elements in this message
+        const audioElements = messageContainer.querySelectorAll("audio");
+        audioElements.forEach((audio) => {
+          addAudioEventListeners(audio);
+        });
+      }
+
+      async function handleFileUploadAndSend(file) {
+        const phoneNumber = document.getElementById("ph_no").innerText;
+        const sessionOrgId = document.getElementById("session_id").innerText;
+        const replyPreviewContainer = document.getElementById(
+          "replyPreviewContainer"
+        );
+
+        // Check if this is a reply
+        const isReply = replyPreviewContainer.style.display === "block";
+        const replyToMessageId = isReply
+          ? replyPreviewContainer.dataset.replyToMessageId
+          : null;
+
+        // For now, we'll skip file replies as it's not fully implemented
+        if (isReply) {
+          alert("Reply with File is not supported yet");
+          return;
+        }
+
+        // Create FormData to send file and other fields
+        const formData = new FormData();
+
+        // Add the file
+        formData.append("file", file);
+
+        // Add required fields
+        formData.append("jid", `${phoneNumber}@s.whatsapp.net`);
+
+        // Determine message type based on file
+        const fileType = file.type.split("/")[0];
+        let messageType = "document";
+
+        switch (fileType) {
+          case "image":
+            messageType = "image";
+            break;
+          case "video":
+            messageType = "video";
+            break;
+          case "audio":
+            messageType = "audio";
+            break;
+          default:
+            messageType = "document";
+        }
+
+        formData.append("messageType", messageType);
+        formData.append("isGroup", "false");
+
+        // Add filename and mimetype
+        formData.append("fileName", file.name);
+        formData.append("mimetype", file.type);
+
+        // For audio files, set ptt to true if it's a voice message
+        if (messageType === "audio") {
+          formData.append("ptt", "true");
+        }
+
+        // Add caption if needed (you could get this from a caption input field)
+        formData.append("caption", "");
+
+        try {
+          // Show loading indicator
+          showLoadingIndicator("Sending file...");
+
+          // Send the request to the backend
+          const response = await fetch(
+            `${apiUrl}/client/send-message/${sessionOrgId}`,
+            {
+              method: "POST",
+              body: formData,
+              headers: {
+                "x-api-key": "FFJt3of4c5itnbmt",
+              },
+            }
+          );
+
+          const data = await response.json();
+          console.log("File send response:", data);
+
+          if (data.success) {
+            // IMMEDIATELY add the message ID to loadedMessageIds to prevent re-rendering
+            loadedMessageIds.add(data.messageId);
+
+            const fileObj = {
+              name: file.name,
+              url: URL.createObjectURL(file),
+              type: file.type,
+              size: file.size,
+            };
+
+            messageDatabase.set(data.messageId, {
+              messageId: data.messageId,
+              text: "",
+              type: "Outgoing",
+              fileUrl: fileObj.url,
+              fileName: fileObj.name,
+              fileType: fileObj.type,
+              fileData: fileObj,
+              createdTime: new Date().toISOString(),
+            });
+
+            // Display the message in the UI
+            await displayMessage({
+              messageId: data.messageId,
+              messageText: "File",
+              messageType: "Outgoing",
+              fileObj: fileObj,
+              status: "sent",
+              createdTime: new Date().toISOString(),
+              replyMessage: null,
+              insertAtTop: false,
+            });
+
+            scrollToBottom();
+
+            let newFormData = new FormData();
+
+            newFormData.append("messageId", data.messageId);
+            newFormData.append("type", "file");
+            newFormData.append("messageType", "Outgoing");
+            newFormData.append("status", "sent");
+            newFormData.append("number", phoneNumber);
+            newFormData.append("file", file);
+            newFormData.append("sessionId", sessionOrgId);
+
+            const res = await fetch(
+              `${apiUrl}/whatsapp-message/createFileRecord`,
+              {
+                method: "POST",
+                headers: {
+                  "x-api-key": "FFJt3of4c5itnbmt",
+                },
+                body: newFormData,
+              }
+            );
+          } else {
+            console.error("Failed to send file:", data.error);
+            alert("Failed to send file: " + data.error);
+          }
+        } catch (error) {
+          console.error("Error sending file:", error);
+          alert("Error sending file: " + error.message);
+        } finally {
+          hideLoadingIndicator();
+        }
+      }
+
+      // Also update the sendAudioRecording function to use the same approach
+      async function sendAudioRecording() {
+        if (recordedAudioBlob) {
+          // FIXED: Use audio/webm format for better compatibility
+          const audioFile = new File(
+            [recordedAudioBlob],
+            `voice-message-${Date.now()}.webm`,
+            { type: "audio/webm" }
+          );
+
+          console.log("Audio File ready to Upload: ", audioFile);
+          await handleFileUploadAndSend(audioFile);
+          closeAudioControls();
+        }
+      }
+
+      function initializeAttachmentOptions() {
+        const attachmentBtn = document.getElementById("attachmentBtn");
+        const attachmentOptions = document.getElementById("attachmentOptions");
+        const fileInput = document.getElementById("fileInput");
+        const attachmentOptionElements =
+          document.querySelectorAll(".attachment-option");
+
+        attachmentBtn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          attachmentOptions.style.display =
+            attachmentOptions.style.display === "block" ? "none" : "block";
+        });
+
+        document.addEventListener("click", function (event) {
+          if (
+            !attachmentBtn.contains(event.target) &&
+            !attachmentOptions.contains(event.target)
+          ) {
+            attachmentOptions.style.display = "none";
+          }
+        });
+
+        attachmentOptionElements.forEach((option) => {
+          option.addEventListener("click", function () {
+            const fileType = this.getAttribute("data-type");
+            if (fileType === "audio") {
+              showAudioControls();
+              toggleAudioRecording();
+              attachmentOptions.style.display = "none";
+              return;
+            }
+
+            switch (fileType) {
+              case "document":
+                fileInput.setAttribute("accept", ".pdf,.doc,.docx,.txt");
+                break;
+              case "image":
+                fileInput.setAttribute("accept", "image/*");
+                break;
+              case "video":
+                fileInput.setAttribute("accept", "video/*");
+                break;
+            }
+
+            fileInput.click();
+            attachmentOptions.style.display = "none";
+          });
+        });
+
+        fileInput.addEventListener("change", handleFileChange);
+      }
+
+      async function handleFileChange(event) {
+        const file = event.target.files[0];
+        if (file) {
+          showFilePreview(file);
+        }
+      }
+
+      // First, let's fix the handleReply function to properly store the replyToMessageId
+      function handleReply(messageId) {
+        const replyPreviewContainer = document.getElementById(
+          "replyPreviewContainer"
+        );
+        const replyPreviewText = document.getElementById("replyPreviewText");
+
+        // Get message data from database using messageId as key
+        const messageData = messageDatabase.get(messageId);
+
+        if (!messageData) {
+          console.error("Message data not found for reply with ID:", messageId);
+          console.log(
+            "Available message IDs in database:",
+            Array.from(messageDatabase.keys())
+          );
+          return;
+        }
+
+        // Toggle reply preview (close if already open for this message)
+        if (
+          replyPreviewContainer.style.display === "block" &&
+          replyPreviewContainer.dataset.replyToMessageId === messageId
+        ) {
+          replyPreviewContainer.style.display = "none";
+          delete replyPreviewContainer.dataset.replyToMessageId;
+          return;
+        }
+
+        console.log("Message Data: ", messageData);
+
+        // Set the preview text
+        let previewText =
+          "Replying to: " +
+          (messageData.fileUrl
+            ? messageData.fileName || "File"
+            : messageData.text || "Message");
+
+        // Truncate long messages
+        if (previewText.length > 50) {
+          previewText = previewText.substring(0, 47) + "...";
+        }
+
+        replyPreviewText.textContent = previewText;
+        replyPreviewContainer.style.display = "block";
+
+        // Store the message being replied to
+        replyPreviewContainer.dataset.replyToMessageId = messageId;
+        replyPreviewContainer.dataset.replyToContent = messageData.text || "";
+        replyPreviewContainer.dataset.replyToFile = messageData.fileUrl
+          ? JSON.stringify(messageData)
+          : "";
+
+        // Focus the input field
+        document.getElementById("messageInput").focus();
+      }
+
+      // Now, let's fix the sendMessage function to properly handle the reply
+      async function sendMessage() {
+        let originalMessageText = "Message";
+
+        const messageInput = document.getElementById("messageInput");
+        const phoneNumber = document.getElementById("ph_no").innerText;
+        const sessionOrgId = document.getElementById("session_id").innerText;
+        const replyPreviewContainer = document.getElementById(
+          "replyPreviewContainer"
+        );
+
+        var messageText = messageInput.value.trim();
+
+        console.log("Message Text ::: ", messageText);
+        console.log(
+          "Reply Preview message container ::: ",
+          replyPreviewContainer
+        );
+
+        if (messageText === "") {
+          alert("Please enter a message!");
+          return;
+        }
+
+        const isReply = replyPreviewContainer.style.display === "block";
+        const replyToMessageId = isReply
+          ? replyPreviewContainer.dataset.replyToMessageId
+          : null;
+
+        console.log("reply Message ID ::::: ", replyToMessageId);
+
+        const chatId = phoneNumber; // Just the phone number, not with @c.us
+        let requestData;
+
+        if (isReply && replyToMessageId) {
+          console.log("Reply To Message Id ::: ", replyToMessageId);
+
+          console.log("Message DataBase ::: ", messageDatabase);
+
+          if (replyToMessageId && messageDatabase.has(replyToMessageId)) {
+            console.log("Message Present Awain Drama baazi ha");
+
+            originalMessage = messageDatabase.get(replyToMessageId);
+            originalMessageText =
+              originalMessage.typeExtended == "file"
+                ? originalMessage.fileName
+                : originalMessage.text;
+          }
+
+          console.log("Orignal Message Text ::: ", originalMessageText);
+
+          requestData = {
+            jid: `${chatId}@s.whatsapp.net`,
+            messageType: "text",
+            text: messageText,
+            quoted: {
+              key: {
+                remoteJid: `${chatId}@s.whatsapp.net`,
+                fromMe: true,
+                id: replyToMessageId,
+              },
+              message: {
+                conversation: originalMessageText,
+              },
+            },
+          };
+        } else {
+          // This is a regular message
+          requestData = {
+            jid: `${chatId}@s.whatsapp.net`,
+            messageType: "text",
+            text: messageText,
+          };
+        }
+
+        console.log("Message Send Triggered with Request Data:", requestData);
+
+        let status = false;
+        let response;
+        let endpoint;
+
+        try {
+          endpoint =
+            isReply && replyToMessageId
+              ? `${apiUrl}/message/reply/${sessionOrgId}`
+              : `${apiUrl}/client/send-message/${sessionOrgId}`;
+
+          response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-api-key": "FFJt3of4c5itnbmt",
+            },
+            body: JSON.stringify(requestData),
+          });
+
+          if (response.status == 200) {
+            console.log("Message sent successfully");
+            status = true;
+          }
+        } catch (error) {
+          console.log("Error in sending", error);
+        }
+
+        const data = await response.json();
+        console.log("Response:", data);
+
+        // Extract message ID from the response
+        let messageId;
+        if (isReply) {
+          messageId = data.result.key.id
+        } else {
+          messageId = data.messageId;
+        }
+
+        // IMMEDIATELY add the message ID to loadedMessageIds to prevent re-rendering
+        loadedMessageIds.add(messageId);
+
+        // Create payload for backend
+        let payloadData = {
+          messageType: "Outgoing",
+          fileUrl: "",
+          number: phoneNumber,
+          sessionId: sessionOrgId,
+          status: "sent",
+          messageId: messageId,
+          message: messageText,
+          type: "text",
+        };
+
+        
+
+        if (isReply && replyToMessageId) {
+          if (originalMessage && originalMessage.typeExtended === "file") {
+            payloadData.replyMessage = originalMessage.fileUrl;
+          } else {
+            payloadData.replyMessage = originalMessageText;
+          }
+        }
+
+        let data1 = {
+          data: payloadData,
+        };
+
+        console.log("Payload Data for creating whatsapp record ::: ", data1);
+
+        try {
+          const sendToBackend = await fetch(
+            `${apiUrl}/whatsapp-message/message`,
+            {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                "x-api-key": "FFJt3of4c5itnbmt",
+              },
+              body: JSON.stringify(data1),
+            }
+          );
+          const data = await sendToBackend.json();
+          console.log("Data: ", data);
+        } catch (error) {
+          console.log("Error While creating record in backend", error);
+        }
+
+        let copyMessageText = messageText;
+        messageInput.value = "";
+
+        // Get reply information before hiding preview
+        let replyToMessage = null;
+        if (isReply && replyToMessageId) {
+          replyToMessage = {
+            text: messageDatabase.get(replyToMessageId)?.text || "Message",
+            id: replyToMessageId,
+          };
+        }
+
+        console.log("Reply To Message:", replyToMessage);
+
+        if (isReply) {
+          replyPreviewContainer.style.display = "none";
+          delete replyPreviewContainer.dataset.replyToMessageId;
+          delete replyPreviewContainer.dataset.replyToContent;
+          delete replyPreviewContainer.dataset.replyToFile;
+        }
+
+        messageDatabase.set(messageId, {
+          messageId: messageId, // Ensure messageId is stored as a property
+          text: messageText || "",
+          type: "Outgoing",
+          fileUrl: "",
+          fileName: "",
+          fileType: "",
+          fileData: "",
+          createdTime: new Date().toISOString(),
+          typeExtended: "text",
+        });
+
+        await displayMessage({
+          messageId: messageId,
+          messageText: messageText,
+          messageType: "Outgoing",
+          fileObj: null,
+          status: status ? "sent" : "not sent",
+          createdTime: new Date().toISOString(),
+          replyMessage: replyToMessage,
+          insertAtTop: false,
+        });
+      }
+
+      // Also, let's fix the handleDisplay function to properly store message data
+      async function handleDisplay(msgArr, insertAtTop = false) {
+        console.log("Message Array ::: ", msgArr);
+
+        for (const [index, record] of msgArr.entries()) {
+          const messageType = record.messageType;
+          const messageText = record.type === "text" ? record.message : null;
+          const createdTime = record.createdAt;
+          let fileUrl =
+            record.type === "file" ? `${apiUrl}/${record.fileUrl}` : null;
+          const messageId = record.messageId;
+          const replyMessage = record.replyMessage || null;
+          const status =
+            messageType === "Incoming" ? "received" : record.status;
+
+          // IMMEDIATELY add the message ID to loadedMessageIds to prevent re-rendering
+          loadedMessageIds.add(messageId);
+
+          console.log("Message Type:", messageType);
+          console.log("Message Text:", messageText);
+          console.log("Created Time:", createdTime);
+          console.log("File Url:", fileUrl);
+          console.log("Message Id: ", messageId);
+          console.log("Reply Message:", replyMessage);
+
+          // Store message data in database before displaying
+          let fileData = null;
+          if (record.type === "file" && fileUrl) {
+            const fileName = fileUrl.split("/").pop() || "File"; // Changed from split("\\") to split("/")
+            // FIXED: Added .webm to audio file detection
+            const fileType =
+              fileName.includes(".opus") || fileName.includes(".webm")
+                ? "audio"
+                : fileName.includes(".jpg") || fileName.includes(".png")
+                ? "image"
+                : fileName.includes(".mp4")
+                ? "video"
+                : "document";
+
+            fileData = {
+              name: fileName,
+              url: fileUrl,
+              type: fileType,
+            };
+          }
+
+          // Store message in database with messageId as key
+          messageDatabase.set(messageId, {
+            messageId: messageId, // Ensure messageId is stored as a property
+            text: messageText || "",
+            type: messageType,
+            fileUrl: fileUrl,
+            fileName: fileData ? fileData.name : "",
+            fileType: fileData ? fileData.type : "",
+            fileData: fileData,
+            createdTime: createdTime,
+            typeExtended: record.type, // 'text' or 'file'
+          });
+
+          console.log(
+            "Stored message with ID:",
+            messageId,
+            "Data:",
+            messageDatabase.get(messageId)
+          );
+
+          // Prepare file object if it's a file message
+          let fileObj = null;
+          if (record.type === "file") {
+            const fileName = fileUrl.split("/").pop() || "File"; // Changed from split("\\") to split("/")
+            // FIXED: Added .webm to audio file detection
+            const fileType =
+              fileName.includes(".opus") || fileName.includes(".webm")
+                ? "audio"
+                : fileName.includes(".jpg") || fileName.includes(".png")
+                ? "image"
+                : fileName.includes(".mp4")
+                ? "video"
+                : "document";
+
+            fileObj = {
+              name: fileName,
+              url: fileUrl,
+              type: fileType,
+            };
+            console.log("File object ::: ", fileObj);
+          }
+
+          // Display the message
+          await displayMessage({
+            messageId: messageId,
+            messageText: messageText || (fileObj ? "File" : ""),
+            messageType: messageType,
+            fileObj: fileObj,
+            status: status,
+            createdTime: createdTime,
+            replyMessage: replyMessage,
+            insertAtTop: insertAtTop,
+          });
+
+          // Update loading progress
+          messagesLoaded++;
+          const progress = (messagesLoaded / totalMessagesToLoad) * 100;
+          updateLoadingProgress(progress);
+          updateLoadingStatus(
+            `Loading messages (${messagesLoaded}/${totalMessagesToLoad})...`
+          );
+
+          // If we've loaded all messages, hide the loading indicator
+          if (messagesLoaded >= totalMessagesToLoad) {
+            hideLoadingIndicator();
+            allMessagesLoaded = true;
+            if (!insertAtTop) {
+              scrollToBottom();
+            }
+          } else if (messagesLoaded > 5) {
+            // After loading a few messages, switch to partial loading mode
+            switchToPartialLoadingMode();
+          }
+        }
+      }
+
+      async function fileToBase64(file) {
+        console.log("File in file to base64: ", file);
+        console.log("File Type: ", typeof file);
+
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = (error) => reject(error);
+        });
+      }
+
+      function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + " B";
+        else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+        else return (bytes / 1048576).toFixed(1) + " MB";
+      }
+
+      async function displayMessage({
+        messageId,
+        messageText,
+        messageType,
+        fileObj = null,
+        status,
+        createdTime = null,
+        replyMessage = null,
+        insertAtTop = false,
+      }) {
+        const isReply = replyMessage != null;
+
+        let date;
+        if (createdTime) {
+          if (typeof createdTime === "string" && createdTime.includes("T")) {
+            date = new Date(createdTime);
+          } else if (
+            typeof createdTime === "string" &&
+            createdTime.match(/\d{1,2}:\d{2}\s*(AM|PM)/i)
+          ) {
+            const timeParts = createdTime.split(/:|\s/);
+            let hours = parseInt(timeParts[0]);
+            const minutes = parseInt(timeParts[1]);
+            const period = timeParts[2].toUpperCase();
+
+            if (period === "PM" && hours < 12) hours += 12;
+            if (period === "AM" && hours === 12) hours = 0;
+
+            date = new Date();
+            date.setHours(hours, minutes, 0, 0);
+          } else {
+            date = new Date();
+          }
+        } else {
+          date = new Date();
+        }
+
+        if (isNaN(date.getTime())) {
+          date = new Date();
+        }
+
+        let currentDate = new Date();
+
+        // Determine message status for tick marks
+        let messageStatus = "";
+        let tickMarkClass = "";
+        if (messageType === "Outgoing" || messageType === "outgoing") {
+          if (status === true || status === "send" || status === "sent") {
+            messageStatus = "sent";
+            tickMarkClass = "tick-sent";
+          } else if (status === "deliver" || status === "delivered") {
+            messageStatus = "delivered";
+            tickMarkClass = "tick-delivered";
+          } else if (status === "seen" || status === "read") {
+            messageStatus = "seen";
+            tickMarkClass = "tick-seen";
+          } else {
+            messageStatus = "not sent";
+            tickMarkClass = "";
+          }
+        } else {
+          messageStatus = "";
+          tickMarkClass = "";
+        }
+
+        const messagesContainer = document.getElementById("messagesContainer");
+
+        // Date separator logic
+        let showDateSeparator = false;
+        let dateSeparatorText = "";
+
+        if (insertAtTop) {
+          // When inserting at top (loading historical messages), check the first message
+          const firstMessage = messagesContainer.querySelector(
+            ".message, .date-separator"
+          );
+          let firstDateSeparator = null;
+
+          if (
+            firstMessage &&
+            firstMessage.classList.contains("date-separator")
+          ) {
+            firstDateSeparator = firstMessage;
+          } else {
+            // Look for the first date separator after messages
+            let nextElement = firstMessage
+              ? firstMessage.nextElementSibling
+              : null;
+            while (nextElement) {
+              if (nextElement.classList.contains("date-separator")) {
+                firstDateSeparator = nextElement;
+                break;
+              }
+              nextElement = nextElement.nextElementSibling;
+            }
+          }
+
+          if (!firstDateSeparator) {
+            showDateSeparator = true;
+          } else {
+            const firstSeparatorText = firstDateSeparator.textContent.trim();
+            const isToday = date.toDateString() === currentDate.toDateString();
+
+            if (firstSeparatorText === "Today" && isToday) {
+              showDateSeparator = false;
+            } else if (
+              firstSeparatorText !== "Today" &&
+              firstSeparatorText ===
+                date.toLocaleDateString("en-US", {
+                  weekday: "short",
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })
+            ) {
+              showDateSeparator = false;
+            } else {
+              showDateSeparator = true;
+            }
+          }
+        } else {
+          // When inserting at bottom (new messages), use original logic
+          const lastMessage = messagesContainer.lastElementChild;
+          let lastDateSeparator = null;
+          let prevElement = messagesContainer.lastElementChild;
+
+          while (prevElement) {
+            if (prevElement.classList.contains("date-separator")) {
+              lastDateSeparator = prevElement;
+              break;
+            }
+            prevElement = prevElement.previousElementSibling;
+          }
+
+          if (!lastDateSeparator) {
+            showDateSeparator = true;
+          } else {
+            const lastSeparatorText = lastDateSeparator.textContent.trim();
+            const isToday = date.toDateString() === currentDate.toDateString();
+
+            if (lastSeparatorText === "Today" && isToday) {
+              showDateSeparator = false;
+            } else if (
+              lastSeparatorText !== "Today" &&
+              lastSeparatorText ===
+                date.toLocaleDateString("en-US", {
+                  weekday: "short",
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })
+            ) {
+              showDateSeparator = false;
+            } else {
+              showDateSeparator = true;
+            }
+          }
+        }
+
+        if (showDateSeparator) {
+          if (date.toDateString() === currentDate.toDateString()) {
+            dateSeparatorText = "Today";
+          } else {
+            dateSeparatorText = date.toLocaleDateString("en-US", {
+              weekday: "short",
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            });
+          }
+
+          const dateSeparator = document.createElement("div");
+          dateSeparator.classList.add("date-separator");
+          dateSeparator.innerHTML = `<span>${dateSeparatorText}</span>`;
+
+          if (insertAtTop) {
+            // Find position after loading indicator and floating button
+            const loadingContainer =
+              document.getElementById("loadingContainer");
+            const floatingBtn = document.getElementById("floatingLatestBtn");
+            let insertAfter = floatingBtn;
+
+            if (insertAfter && insertAfter.nextElementSibling) {
+              messagesContainer.insertBefore(
+                dateSeparator,
+                insertAfter.nextElementSibling
+              );
+            } else {
+              messagesContainer.appendChild(dateSeparator);
+            }
+          } else {
+            messagesContainer.appendChild(dateSeparator);
+          }
+        }
+
+        const messageContainer = document.createElement("div");
+        messageContainer.classList.add("message", messageType.toLowerCase());
+        // Use messageId for the data attribute
+        messageContainer.setAttribute("data-message-id", messageId);
+
+        // Add reply class if this is a reply message
+        if (isReply) {
+          messageContainer.classList.add("reply-message");
+        }
+
+        const messageContent = document.createElement("div");
+        messageContent.classList.add("message-content");
+
+        let contentHTML = "";
+
+        // Add reply header if this is a reply
+        if (isReply && replyMessage) {
+          contentHTML += `
+<div class="reply-header">
+  <span class="reply-to-text">${messageType === "Incoming" ? "" : ""}</span>
+</div>
+<div class="replied-content">`;
+
+          // Handle file reply
+          // CORRECTED: Use fileUrl instead of fileId
+          if (replyMessage.fileUrl) {
+            const fileType = replyMessage.fileType
+              ? replyMessage.fileType.split("/")[0]
+              : "document";
+            let iconClass = "fa-file-alt";
+            let iconBg = "document-icon";
+
+            switch (fileType) {
+              case "image":
+                iconClass = "fa-image";
+                iconBg = "image-icon";
+                break;
+              case "video":
+                iconClass = "fa-video";
+                iconBg = "video-icon";
+                break;
+              case "audio":
+                iconClass = "fa-music";
+                iconBg = "audio-icon";
+                break;
+              default:
+                iconClass = "fa-file-alt";
+                iconBg = "document-icon";
+            }
+
+            contentHTML += `
+  <div class="replied-file-info">
+    <div class="replied-file-icon ${iconBg}">
+      <i class="fas ${iconClass}"></i>
+    </div>
+    <span class="replied-file-name">${
+      replyMessage.fileName || replyMessage.name || "File"
+    }</span>
+  </div>`;
+          } else {
+            // Try different ways to get the reply text
+            let replyText = "";
+
+            // Try common property names for the message text
+            if (replyMessage.text) {
+              replyText = replyMessage.text;
+            } else if (replyMessage.message) {
+              replyText = replyMessage.message;
+            } else if (replyMessage.body) {
+              replyText = replyMessage.body;
+            } else if (replyMessage.content) {
+              replyText = replyMessage.content;
+            } else if (typeof replyMessage === "string") {
+              replyText = replyMessage;
+            } else {
+              // If replyMessage is an object but we can't find the text, log it for debugging
+              console.log("Unable to extract reply text from:", replyMessage);
+              replyText = "Message";
+            }
+
+            const truncatedText =
+              replyText.length > 100
+                ? replyText.substring(0, 97) + "..."
+                : replyText;
+            contentHTML += `<div>${truncatedText}</div>`;
+          }
+
+          contentHTML += `</div>`;
+        }
+
+        // Add main message content
+        if (fileObj) {
+          let fileType = fileObj.type ? fileObj.type.split("/")[0] : null;
+
+          if (!fileType && fileObj.url) {
+            if (fileObj.url.match(/\.(jpg|jpeg|png|gif)$/i)) fileType = "image";
+            else if (fileObj.url.match(/\.(mp4|mov|avi)$/i)) fileType = "video";
+            // FIXED: Added .webm to audio file detection
+            else if (fileObj.url.match(/\.(mp3|wav|ogg|webm)$/i))
+              fileType = "audio";
+            else fileType = "document";
+          }
+
+          switch (fileType) {
+            case "image":
+              contentHTML += `
+          <div class="file-message">
+            <div class="file-icon image-icon"><i class="fas fa-image"></i></div>
+            <div class="file-details">
+              <div class="file-name">${fileObj.name || "Image"}</div>
+              <div class="file-size">${
+                fileObj.size ? formatFileSize(fileObj.size) : ""
+              }</div>
+            </div>
+          </div>
+          <img src="${fileObj.url}" class="image-preview" alt="${
+                fileObj.name || "Image"
+              }">`;
+              break;
+
+            case "video":
+              contentHTML += `
+          <div class="file-message">
+            <div class="file-icon video-icon"><i class="fas fa-video"></i></div>
+            <div class="file-details">
+              <div class="file-name">${fileObj.name || "Video"}</div>
+              <div class="file-size">${
+                fileObj.size ? formatFileSize(fileObj.size) : ""
+              }</div>
+            </div>
+          </div>
+          <video controls class="video-preview">
+            <source src="${fileObj.url}" type="${fileObj.type || "video/mp4"}">
+            Your browser does not support video tag.
+          </video>`;
+              break;
+
+            case "audio":
+              const fileName = fileObj.name || "";
+              let audioType = fileObj.type || "audio/mpeg";
+
+              // Better detection of audio file types
+              if (fileName.includes(".mp3")) {
+                audioType = "audio/mpeg";
+              } else if (fileName.includes(".wav")) {
+                audioType = "audio/wav";
+              } else if (fileName.includes(".ogg")) {
+                audioType = "audio/ogg";
+              } else if (fileName.includes(".webm")) {
+                audioType = "audio/webm";
+              } else if (fileName.includes(".opus")) {
+                audioType = "audio/opus";
+                // Check if browser supports opus
+                const audio = document.createElement("audio");
+                if (!audio.canPlayType && !audio.canPlayType("audio/opus")) {
+                  console.warn("Browser doesn't support opus format");
+                  // Try to use ogg as fallback
+                  audioType = "audio/ogg";
+                }
+              }
+
+              // Create the audio element with multiple sources for better compatibility
+              contentHTML += `
+    <div class="file-message">
+      <div class="file-icon audio-icon"><i class="fas fa-music"></i></div>
+      <div class="file-details">
+        <div class="file-name">${fileObj.name || "Audio"}</div>
+        <div class="file-size">${
+          fileObj.size ? formatFileSize(fileObj.size) : ""
+        }</div>
+      </div>
+    </div>
+    <audio controls class="audio-player" preload="metadata">
+      <source src="${fileObj.url}" type="${audioType}">
+      <!-- Add fallback for opus files -->
+      ${
+        fileName.includes(".opus")
+          ? `<source src="${fileObj.url}" type="audio/ogg">`
+          : ""
+      }
+      Your browser does not support audio element.
+    </audio>`;
+              break;
+
+            default:
+              const fileExtension = fileObj.name
+                ? fileObj.name.split(".").pop().toLowerCase()
+                : "";
+              let iconClass = "fa-file-alt";
+
+              if (["pdf"].includes(fileExtension)) iconClass = "fa-file-pdf";
+              else if (["doc", "docx"].includes(fileExtension))
+                iconClass = "fa-file-word";
+              else if (["xls", "xlsx"].includes(fileExtension))
+                iconClass = "fa-file-excel";
+              else if (["ppt", "pptx"].includes(fileExtension))
+                iconClass = "fa-file-powerpoint";
+              else if (["txt"].includes(fileExtension))
+                iconClass = "fa-file-alt";
+
+              contentHTML += `
+          <div class="file-message">
+            <div class="file-icon document-icon"><i class="fas ${iconClass}"></i></div>
+            <div class="file-details">
+              <div class="file-name">${fileObj.name || "Document"}</div>
+              <div class="file-size">${
+                fileObj.size ? formatFileSize(fileObj.size) : ""
+              }</div>
+            </div>
+          </div>`;
+              break;
+          }
+        } else {
+          contentHTML += `<p>${linkify(messageText)}</p>`;
+        }
+
+        // Add time and status indicators
+        contentHTML += `
+    <div class="message-footer">
+      <div>
+        <span class="message-time">${date.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}</span>`;
+
+        // Add tick marks for outgoing messages
+        if (messageType === "Outgoing" || messageType === "outgoing") {
+          if (tickMarkClass) {
+            contentHTML += `<span class="message-status-ticks"><span class="${tickMarkClass}"></span></span>`;
+          } else {
+            contentHTML += `<span class="message-status">${messageStatus}</span>`;
+          }
+        } else {
+          contentHTML += `<span class="message-status">${messageStatus}</span>`;
+        }
+
+        contentHTML += `
+      </div>
+      <div class="message-actions">`;
+
+        // FIXED: Add view link for files that opens in new window
+        if (fileObj != null) {
+          contentHTML += `<a href="${fileObj.url}" target="_blank" rel="noopener noreferrer" class="view-link">View</a>`;
+        }
+
+        // FIXED: Add retry button for failed messages
+        if (
+          (messageType === "Outgoing" || messageType === "outgoing") &&
+          (status === "not sent" || status === "failed")
+        ) {
+          contentHTML += `<button id="againSend" class="retry-btn" onclick="againSend('${messageId}')"><i class="fas fa-redo"></i> Retry</button>`;
+        }
+
+        contentHTML += `
+      </div>
+    </div>`;
+
+        // Add options menu
+        if (messageType == "Incoming" || messageType == "incoming") {
+          contentHTML += `
+    <div class="message-options" > 
+      <i style="margin-left:35px;" class="fas fa-chevron-down"></i>
+      <div class="message-options-menu">
+        <div class="message-options-item reply-option" data-message-id="${messageId}">
+          <i class="fas fa-reply"></i>
+          <span>Reply</span>
+        </div>`;
+        } else {
+          contentHTML += `
+    <div class="message-options" > 
+      <i class="fas fa-chevron-down"></i>
+      <div class="message-options-menu">
+        <div class="message-options-item reply-option" data-message-id="${messageId}">
+          <i class="fas fa-reply"></i>
+          <span>Reply</span>
+        </div>
+        <div class="message-options-item delete-option" data-message-id="${messageId}">
+          <i class="fas fa-trash-alt"></i>
+          <span>Delete</span>
+        </div>`;
+        }
+
+        contentHTML += `
+      </div>
+    </div>`;
+
+        messageContent.innerHTML = contentHTML;
+        messageContainer.appendChild(messageContent);
+
+        // console.log("Content HTML For Message ::: ", contentHTML);
+
+        // Insert message based on insertAtTop parameter
+        if (insertAtTop) {
+          // Find the position after loading indicator and floating button
+          const floatingBtn = document.getElementById("floatingLatestBtn");
+          let insertAfter = floatingBtn;
+
+          if (insertAfter && insertAfter.nextElementSibling) {
+            messagesContainer.insertBefore(
+              messageContainer,
+              insertAfter.nextElementSibling
+            );
+          } else {
+            messagesContainer.appendChild(messageContainer);
+          }
+        } else {
+          messagesContainer.appendChild(messageContainer);
+          // Only scroll to bottom for new messages (not when loading historical)
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Add message options listeners
+        // CORRECTED: Pass only messageId and messageType
+        addMessageOptionsListeners(messageContainer, messageId, messageType);
+
+        // Add event listeners to audio elements after they're added to the DOM
+        const audioElements = messageContainer.querySelectorAll("audio");
+        audioElements.forEach((audio) => {
+          addAudioEventListeners(audio);
+        });
+      }
+
+      // Initialize the widget when the page loads
+      window.onload = initializeWidget;
+
+      document
+        .getElementById("messageInput")
+        .addEventListener("keydown", function (event) {
+          if (event.key === "Enter") {
+            sendMessage();
+          }
+        });
+
+      // Initialize pagination controls
+      document.addEventListener("DOMContentLoaded", function () {
+        const prevBtn = document.getElementById("prevPageBtn");
+        const nextBtn = document.getElementById("nextPageBtn");
+
+        prevBtn.addEventListener("click", function () {
+          if (currentPage > 1) {
+            loadMessages(currentPage - 1);
+          }
+        });
+
+        nextBtn.addEventListener("click", function () {
+          if (currentPage < totalPages) {
+            loadMessages(currentPage + 1);
+          }
+        });
+      });
+
+      function linkify(text) {
+        if (!text) return text;
+
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        return text.replace(urlRegex, function (url) {
+          // Shorten long URLs for display while keeping full link in href
+          const displayUrl =
+            url.length > 50
+              ? url.substring(0, 30) + "..." + url.substring(url.length - 15)
+              : url;
+          return (
+            '<a href="' +
+            url +
+            '" target="_blank" rel="noopener noreferrer">' +
+            displayUrl +
+            "</a>"
+          );
+        });
+      }
+
+      // Helper function to format file sizes
+      function formatFileSize(bytes) {
+        if (bytes === 0) return "0 Bytes";
+        const k = 1024;
+        const sizes = ["Bytes", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2) + " " + sizes[i]);
+      }
+
+      // FIXED: Improved againSend function
+      async function againSend(messageId) {
+        console.log("Again Send called for messageId:", messageId);
+
+        // Get message data from database
+        const messageData = messageDatabase.get(messageId);
+        if (!messageData) {
+          console.error("Message data not found for ID:", messageId);
+          return;
+        }
+
+        const phoneNumber = document.getElementById("ph_no").innerText;
+        const sessionOrgId = document.getElementById("session_id").innerText;
+        const chatId = `${phoneNumber}@s.whatsapp.net`;
+
+        console.log("Message data for resend:", messageData);
+
+        let requestData;
+        let response;
+
+        try {
+          // Check if it's a text message
+          if (messageData.typeExtended === "text" || !messageData.fileUrl) {
+            // Resend text message
+            requestData = {
+              jid: chatId,
+              messageType: "text",
+              text: messageData.text || "",
+            };
+
+            console.log("Resending text message:", requestData);
+
+            response = await fetch(
+              `${apiUrl}/client/send-message/${sessionOrgId}`,
+              {
+                method: "POST",
+                headers: {
+                  "content-type": "application/json",
+                  "x-api-key": "FFJt3of4c5itnbmt",
+                },
+                body: JSON.stringify(requestData),
+              }
+            );
+          } else {
+            // Resend file message
+            // We need to fetch the file and resend it
+            if (messageData.fileUrl) {
+              // Create a temporary file object from the URL
+              const fileResponse = await fetch(messageData.fileUrl);
+              const blob = await fileResponse.blob();
+              const file = new File([blob], messageData.fileName || "file", {
+                type: messageData.fileType || blob.type,
+              });
+
+              // Create FormData to send file
+              const formData = new FormData();
+              formData.append("file", file);
+              formData.append("jid", chatId);
+
+              // Determine message type based on file
+              const fileType = file.type.split("/")[0];
+              let messageType = "document";
+
+              switch (fileType) {
+                case "image":
+                  messageType = "image";
+                  break;
+                case "video":
+                  messageType = "video";
+                  break;
+                case "audio":
+                  messageType = "audio";
+                  break;
+                default:
+                  messageType = "document";
+              }
+
+              formData.append("messageType", messageType);
+              formData.append("isGroup", "false");
+              formData.append("fileName", file.name);
+              formData.append("mimetype", file.type);
+              formData.append("caption", "");
+
+              if (messageType === "audio") {
+                formData.append("ptt", "true");
+              }
+
+              console.log("Resending file message");
+
+              response = await fetch(
+                `${apiUrl}/client/send-message/${sessionOrgId}`,
+                {
+                  method: "POST",
+                  body: formData,
+                  headers: {
+                    "x-api-key": "FFJt3of4c5itnbmt",
+                  },
+                }
+              );
+            }
+          }
+
+          if (response && response.status === 200) {
+            const data = await response.json();
+            console.log("Resend response:", data);
+
+            // Update the message status in UI
+            const messageElement = document.querySelector(
+              `[data-message-id="${messageId}"]`
+            );
+
+            if (messageElement) {
+              // Update status to sent
+              const statusElement =
+                messageElement.querySelector(".message-status") ||
+                messageElement.querySelector(".message-status-ticks");
+
+              if (statusElement) {
+                // Replace with tick mark
+                statusElement.className = "message-status-ticks";
+                statusElement.innerHTML = '<span class="tick-sent"></span>';
+              }
+
+              // Remove retry button
+              const retryButton = messageElement.querySelector("#againSend");
+              if (retryButton) {
+                retryButton.remove();
+              }
+
+              // Update message database
+              if (messageDatabase.has(messageId)) {
+                const msgData = messageDatabase.get(messageId);
+                msgData.status = "sent";
+                messageDatabase.set(messageId, msgData);
+              }
+
+              // Update backend record
+              await fetch(`${apiUrl}/whatsapp-message/updateStatus`, {
+                method: "POST",
+                headers: {
+                  "content-type": "application/json",
+                  "x-api-key": "FFJt3of4c5itnbmt",
+                },
+                body: JSON.stringify({
+                  messageId: messageId,
+                  status: "sent",
+                }),
+              });
+
+              console.log("Message resent successfully");
+            }
+          } else {
+            console.error("Failed to resend message");
+            alert("Failed to resend message. Please try again.");
+          }
+        } catch (error) {
+          console.error("Error resending message:", error);
+          alert("Error resending message: " + error.message);
+        }
+      }
+
+      // Helper function to get reply message data
+      async function getReplyMessageData(replyMessageId) {
+        console.log("Fetching reply message with ID:", replyMessageId);
+
+        // First check in memory database
+        let replyMessage = messageDatabase.get(replyMessageId);
+
+        if (replyMessage) {
+          console.log("Found reply message in memory:", replyMessage);
+          return replyMessage;
+        }
+
+        // If not found in memory, try to fetch from local server
+        try {
+          console.log("Querying local server for reply message...");
+          const sessionOrgId = document.getElementById("session_id").innerText;
+
+          const response = await fetch(
+            `${apiUrl}/whatsapp-message/message/${sessionOrgId}/${replyMessageId}`,
+            {
+              method: "GET",
+              headers: {
+                "content-type": "application/json",
+                "x-api-key": "FFJt3of4c5itnbmt",
+              },
+            }
+          );
+
+          const data = await response.json();
+          console.log("Server response:", data);
+
+          if (data && data.data) {
+            const record = data.data;
+            console.log("Found record in server:", record);
+
+            // Handle file data if present
+            let fileData = null;
+            if (record.type === "file" && record.fileUrl) {
+              const fileUrl = record.fileUrl;
+              const fileName = fileUrl.split("/").pop() || "File"; // Changed from split("\\") to split("/")
+              // FIXED: Added .webm to audio file detection
+              const fileType =
+                fileName.includes(".opus") || fileName.includes(".webm")
+                  ? "audio"
+                  : fileName.includes(".jpg") || fileName.includes(".png")
+                  ? "image"
+                  : fileName.includes(".mp4")
+                  ? "video"
+                  : "document";
+
+              fileData = {
+                url: `${apiUrl}/file/${fileUrl.split("/").pop()}`,
+                type: fileType,
+                name: fileName,
+              };
+            }
+
+            replyMessage = {
+              text: record.message || "",
+              type: record.messageType || "",
+              fileId: record.type === "file" ? record.messageId : null,
+              fileName: fileData ? fileData.name : "",
+              fileType: fileData ? fileData.type : "",
+              fileData: fileData,
+              recordId: record.messageId,
+              createdTime: record.createdAt,
+            };
+
+            // Store in memory for future use
+            messageDatabase.set(replyMessageId, replyMessage);
+
+            console.log("Stored reply message in database:", replyMessage);
+            return replyMessage;
+          } else {
+            console.log("No matching message found in server");
+            return null;
+          }
+        } catch (error) {
+          console.error("Error fetching reply message:", error);
+          return null;
+        }
+      }
+
+      // Add these variables at the top of your script section
+      let qrStatusInterval;
+      let qrRefreshInterval;
+      let isQRCodeDisplayed = false;
+
+      // Add this function to show the QR code
+      function showQRCode() {
+        console.log("Show QR code function has been triggered");
+
+        const qrCodeContainer = document.getElementById("qrCodeContainer");
+        const chatWidget = document.querySelector(".chat-widget");
+
+        if (qrCodeContainer) {
+          qrCodeContainer.style.display = "block";
+          isQRCodeDisplayed = true;
+
+          if (chatWidget) {
+            chatWidget.style.display = "none";
+          }
+
+          // Start checking status
+          startQRStatusCheck();
+
+          // Load the QR code immediately
+          loadQRCode();
+        }
+      }
+      // Add this function to hide the QR code and show the chat widget
+      function hideQRCode() {
+        console.log("Hide QR code function has been triggered");
+
+        const qrCodeContainer = document.getElementById("qrCodeContainer");
+        const chatWidget = document.querySelector(".chat-widget");
+
+        if (qrCodeContainer) {
+          qrCodeContainer.style.display = "none";
+          isQRCodeDisplayed = false;
+
+          if (chatWidget) {
+            chatWidget.style.display = "flex";
+          }
+
+          // Stop checking status
+          stopQRStatusCheck();
+        }
+      }
+
+      // Add this function to load the QR code
+      function loadQRCode() {
+        console.log("Load qr code function has been triggered");
+
+        let sessionOrgId = document.getElementById("session_id").innerText;
+
+        // If session_id is empty, use a default value
+        if (!sessionOrgId || sessionOrgId.trim() === "") {
+          sessionOrgId = "2"; // Use the same session ID as in initializeWidget
+          document.getElementById("session_id").innerText = sessionOrgId;
+        }
+
+        const qrImage = document.getElementById("qrImage");
+        const qrStatus = document.getElementById("qrStatus");
+
+        qrStatus.textContent = "Loading QR code...";
+        qrImage.src = ""; // Clear previous image
+
+        fetch(`${apiUrl}/session/qr/${sessionOrgId}/image`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": "FFJt3of4c5itnbmt",
+          },
+        })
+          .then((response) => {
+            console.log("QR API response status:", response.status);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch QR: ${response.status}`);
+            }
+            return response.blob();
+          })
+          .then((blob) => {
+            console.log("QR blob received, size:", blob.size);
+            if (blob.size === 0) {
+              throw new Error("Empty QR code image received");
+            }
+
+            const imageUrl = URL.createObjectURL(blob);
+            qrImage.src = imageUrl;
+            qrImage.onload = function () {
+              console.log("QR image loaded successfully");
+              qrStatus.textContent = "Scan this QR code with WhatsApp";
+            };
+            qrImage.onerror = function () {
+              console.error("Failed to load QR image");
+              qrStatus.textContent =
+                "Failed to display QR code. Please refresh.";
+            };
+          })
+          .catch((err) => {
+            console.error("Error fetching QR:", err);
+            qrStatus.textContent =
+              "Failed to load QR code: " + err.message + ". Please refresh.";
+          });
+      }
+      // Add this function to start checking the QR status
+      function startQRStatusCheck() {
+        console.log("Start QR status check function has been triggered");
+
+        // Clear any existing intervals
+        stopQRStatusCheck();
+
+        // Check status immediately
+        checkQRStatus();
+
+        // Then check every 8 seconds
+        qrStatusInterval = setInterval(checkQRStatus, 8000);
+
+        // Refresh QR code every 60 seconds (in case it expires)
+        qrRefreshInterval = setInterval(() => {
+          if (isQRCodeDisplayed) {
+            loadQRCode();
+          }
+        }, 60000);
+      }
+
+      // Add this function to stop checking the QR status
+      function stopQRStatusCheck() {
+        console.log("Stop QR status check function has been triggered");
+
+        if (qrStatusInterval) {
+          clearInterval(qrStatusInterval);
+          qrStatusInterval = null;
+        }
+
+        if (qrRefreshInterval) {
+          clearInterval(qrRefreshInterval);
+          qrRefreshInterval = null;
+        }
+      }
+
+      // Add this function to check the QR status
+      function checkQRStatus() {
+        console.log("Check QR status function has been triggered");
+
+        // Make sure we have a session ID
+        let sessionOrgId = document.getElementById("session_id").innerText;
+
+        // If session_id is empty, use a default value
+        if (!sessionOrgId || sessionOrgId.trim() === "") {
+          sessionOrgId = "1"; // Default session ID
+          document.getElementById("session_id").innerText = sessionOrgId;
+        }
+
+        const qrStatus = document.getElementById("qrStatus");
+
+        fetch(`${apiUrl}/session/status/${sessionOrgId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": "FFJt3of4c5itnbmt",
+          },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            const status = data.status;
+
+            // FIXED: Check for both "qr_waiting" and "waiting_for_qr_scan"
+            if (status === "qr_waiting" || status === "waiting_for_qr_scan") {
+              // QR is still waiting, no action needed
+              qrStatus.textContent = "Scan this QR code with WhatsApp";
+            } else if (
+              status === "connected" ||
+              data.message === "session_connected"
+            ) {
+              // Session is connected, hide QR code and show chat widget
+              qrStatus.textContent = "Connected! Loading chat...";
+              setTimeout(() => {
+                hideQRCode();
+                loadMessages();
+              }, 1000);
+            } else if (status === "closed") {
+              // Session closed, restart and reload QR
+              qrStatus.textContent = "Session closed. Restarting...";
+              restartSession();
+            } else if (status === "not_found") {
+              // Session not found, create new session and reload QR
+              qrStatus.textContent =
+                "Session not found. Creating new session...";
+              createSession();
+            }
+          })
+          .catch((err) => {
+            console.error("Error checking QR status:", err);
+            qrStatus.textContent = "Error checking status. Please refresh.";
+          });
+      }
+
+      // Add this function to restart the session
+      function restartSession() {
+        console.log("Restart session function has been triggered");
+
+        let sessionOrgId = document.getElementById("session_id").innerText;
+
+        fetch(`${apiUrl}/session/restart/${sessionOrgId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": "FFJt3of4c5itnbmt",
+          },
+        })
+          .then(() => {
+            loadQRCode();
+          })
+          .catch((err) => {
+            console.error("RestartSession error:", err);
+            document.getElementById("qrStatus").textContent =
+              "Failed to restart session. Please refresh.";
+          });
+      }
+
+      // Add this function to create a new session
+      function createSession() {
+        console.log("create session function has been triggered");
+
+        // Make sure we have a session ID
+        let sessionOrgId = document.getElementById("session_id").innerText;
+
+        // If session_id is empty, use a default value
+        if (!sessionOrgId || sessionOrgId.trim() === "") {
+          sessionOrgId = "1"; // Default session ID
+          document.getElementById("session_id").innerText = sessionOrgId;
+        }
+
+        fetch(`${apiUrl}/session/start/${sessionOrgId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": "FFJt3of4c5itnbmt",
+          },
+        })
+          .then(() => {
+            loadQRCode();
+          })
+          .catch((err) => {
+            console.error("CreateSession error:", err);
+            document.getElementById("qrStatus").textContent =
+              "Failed to create session. Please refresh.";
+          });
+      }
+    </script>
+  </body>
+</html>
